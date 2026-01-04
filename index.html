@@ -42,6 +42,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 6px;
+    transition: transform 0.15s ease, background 0.15s ease;
   }
 
   /* 色指定 */
@@ -72,6 +73,16 @@
     height: 60px;
     margin: 5px;
   }
+  
+  html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  }
+
 </style>
 </head>
 
@@ -86,9 +97,9 @@
 <div class="board" id="board"></div>
 
 <div class="controls">
-  <div><button onclick="move('up')">↑</button></div>
+  <div><button onclick="move('down')">↑</button></div>
   <button onclick="move('left')">←</button>
-  <button onclick="move('down')">↓</button>
+  <button onclick="move('up')">↓</button>
   <button onclick="move('right')">→</button>
 </div>
 
@@ -120,19 +131,36 @@ function spawn() {
 function draw() {
   const b = document.getElementById("board");
   b.innerHTML = "";
+
   for (let i=0;i<SIZE;i++) {
     for (let j=0;j<SIZE;j++) {
       const v = board[i][j];
       const d = document.createElement("div");
       d.className = "cell" + (v ? " n"+v : "");
+
+      if (v !== 0) {
+        d.classList.add("spawn");
+      }
+
       d.textContent = v ? v : "";
       b.appendChild(d);
     }
   }
+
   document.getElementById("score").textContent = score;
   document.getElementById("best").textContent = best;
 }
 
+@keyframes pop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+.spawn {
+  animation: pop 0.15s ease-out;
+}
+
+  
 function slide(row) {
   let arr = row.filter(v => v);
   for (let i=0;i<arr.length-1;i++) {
