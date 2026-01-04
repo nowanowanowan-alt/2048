@@ -52,6 +52,24 @@ h1 { margin: 10px 0; }
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
+  #gameover {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+#gameover .box {
+  background: #faf8ef;
+  padding: 20px 30px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+
 @keyframes pop {
   0% { transform: scale(0); }
   100% { transform: scale(1); }
@@ -120,13 +138,22 @@ h1 { margin: 10px 0; }
     <button data-value="4096" onclick="specialReset(4096)">4096 Reset</button>
     <button data-value="8192" onclick="specialReset(8192)">8192 Reset</button>
   </div>
-</div>
+
+  <div id="gameover">
+    <div class="box">
+      <h2>Game Over</h2>
+      <button onclick="init()">Reset</button>
+    </div>
+  </div>
 
 <script>
 const SIZE = 4;
 let board = [];
 let score = 0;
 let best = Number(localStorage.getItem("best2048")) || 0;
+
+const scoreEl = document.getElementById("score")
+const bestEl = document.getElementById("best")
 
 const resetConditions = {2048:25000,4096:50000,8192:100000};
 const tileColors = {2048:"#edc22e",4096:"#000",8192:"#6a0dad"};
@@ -188,6 +215,40 @@ function move(dir){
     }
     draw();
   }
+}
+
+  if (moved) {
+  addTile();
+
+  if (score > best) {
+    best = score;
+    localStorage.setItem("best2048", best);
+  }
+
+  draw();
+
+  if (isGameOver()) {
+    document.getElementById("gameover").style.display = "flex";
+  }
+}
+  
+  function isGameOver() {
+  for (let i=0;i<SIZE;i++) {
+    for (let j=0;j<SIZE;j++) {
+      if (board[i][j] === 0) return false;
+      if (j < SIZE-1 && board[i][j] === board[i][j+1]) return false;
+      if (i < SIZE-1 && board[i][j] === board[i+1][j]) return false;
+    }
+  }
+  return true;
+}
+
+  function init() {
+  board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+  score = 0;
+  addTile(); addTile();
+  document.getElementById("gameover").style.display = "none";
+  draw();
 }
 
 function draw(){
