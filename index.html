@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>2048 Mobile</title>
+
+<style>
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    background: #faf8ef;
+    margin: 0;
+    padding: 10px;
+  }
+
+  h1 { margin: 10px 0; }
+
+  .score {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .board {
+    width: 320px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    background: #bbada0;
+    padding: 5px;
+    border-radius: 8px;
+  }
+
+  .cell {
+    width: 70px;
+    height: 70px;
+    background: #cdc1b4;
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+  }
+
+  /* 色指定 */
+  .n2    { background:#eee; color:#000; }
+  .n4    { background:#f5deb3; }
+  .n8    { background:#f2b179; }
+  .n16   { background:#f59563; }
+  .n32   { background:#f67c5f; }
+  .n64   { background:#f65e3b; color:#fff; }
+
+  .n128  { background:#edcf72; }
+  .n256  { background:#edcc61; }
+  .n512  { background:#edc850; }
+  .n1024 { background:#edc53f; }
+  .n2048 { background:#edc22e; }
+
+  .n4096 { background:#000; color:#fff; }
+  .n8192 { background:#800080; color:#fff; }   /* 紫 */
+  .n16384{ background:#ff69b4; color:#fff; }   /* ピンク */
+
+  .controls {
+    margin-top: 15px;
+  }
+
+  .controls button {
+    font-size: 24px;
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>2048</h1>
+<div class="score">
+  Score: <span id="score">0</span> /
+  Best: <span id="best">0</span>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="controls">
+  <div><button onclick="move('up')">↑</button></div>
+  <button onclick="move('left')">←</button>
+  <button onclick="move('down')">↓</button>
+  <button onclick="move('right')">→</button>
+</div>
+
+<script>
+const SIZE = 4;
+let board = [];
+let score = 0;
+let best = 0;
+
+function init() {
+  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  score = 0;
+  spawn();
+  spawn();
+  draw();
+}
+
+function spawn() {
+  let empty = [];
+  for (let i=0;i<SIZE;i++)
+    for (let j=0;j<SIZE;j++)
+      if (board[i][j] === 0) empty.push([i,j]);
+
+  if (empty.length === 0) return;
+  let [i,j] = empty[Math.floor(Math.random()*empty.length)];
+  board[i][j] = Math.random() < 0.9 ? 2 : 4;
+}
+
+function draw() {
+  const b = document.getElementById("board");
+  b.innerHTML = "";
+  for (let i=0;i<SIZE;i++) {
+    for (let j=0;j<SIZE;j++) {
+      const v = board[i][j];
+      const d = document.createElement("div");
+      d.className = "cell" + (v ? " n"+v : "");
+      d.textContent = v ? v : "";
+      b.appendChild(d);
+    }
+  }
+  document.getElementById("score").textContent = score;
+  document.getElementById("best").textContent = best;
+}
+
+function slide(row) {
+  let arr = row.filter(v => v);
+  for (let i=0;i<arr.length-1;i++) {
+    if (arr[i] === arr[i+1]) {
+      arr[i] *= 2;
+      score += arr[i];
+      arr[i+1] = 0;
+    }
+  }
+  arr = arr.filter(v => v);
+  while (arr.length < SIZE) arr.push(0);
+  return arr;
+}
+
+function rotate(times) {
+  for (let t=0;t<times;t++) {
+    board = board[0].map((_,i)=>board.map(r=>r[i]).reverse());
+  }
+}
+
+function move(dir) {
+  let rot = {left:0, up:1, right:2, down:3}[dir];
+  let before = JSON.stringify(board);
+
+  rotate(rot);
+  board = board.map(r => slide(r));
+  rotate((4-rot)%4);
+
+  if (JSON.stringify(board) !== before) {
+    spawn();
+    best = Math.max(best, score);
+  }
+  draw();
+}
+
+/// スワイプ操作
+let sx, sy;
+document.addEventListener("touchstart", e=>{
+  sx = e.touches[0].clientX;
+  sy = e.touches[0].clientY;
+});
+document.addEventListener("touchend", e=>{
+  let dx = e.changedTouches[0].clientX - sx;
+  let dy = e.changedTouches[0].clientY - sy;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 30) move("right");
+    if (dx < -30) move("left");
+  } else {
+    if (dy > 30) move("down");
+    if (dy < -30) move("up");
+  }
+});
+
+init();
+</script>
+
+</body>
+</html>
