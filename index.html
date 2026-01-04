@@ -36,7 +36,6 @@ h1 { margin: 10px 0; }
   background: #bbada0;
   padding: 8px;
   border-radius: 8px;
-  touch-action: none;
 }
 
 .cell {
@@ -52,27 +51,9 @@ h1 { margin: 10px 0; }
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-  #gameover {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-}
-
-#gameover .box {
-  background: #faf8ef;
-  padding: 20px 30px;
-  border-radius: 10px;
-  text-align: center;
-}
-
-
 @keyframes pop {
-  0% { transform: scale(0); }
-  100% { transform: scale(1); }
+  from { transform: scale(0); }
+  to { transform: scale(1); }
 }
 .spawn { animation: pop 0.15s ease-out; }
 
@@ -88,16 +69,13 @@ h1 { margin: 10px 0; }
 .n8192 { background:#6a0dad; color:#fff; }
 .n16384 { background:#ff69b4; }
 
-.controls {
-  margin-top: 10px;
-}
 .controls button {
   padding: 8px 14px;
   margin: 2px;
 }
 
 #special-buttons {
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   gap: 6px;
   justify-content: center;
@@ -112,10 +90,48 @@ h1 { margin: 10px 0; }
   background:#ccc;
   color:#666;
 }
+
+/* GAME OVER */
+#gameover {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.overbox {
+  background: #faf8ef;
+  padding: 20px 30px;
+  border-radius: 10px;
+  text-align: center;
+  animation: fadein 0.3s ease;
+}
+@keyframes fadein {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* NEW RECORD */
+#record {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffcc00;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  display: none;
+  z-index: 200;
+}
 </style>
 </head>
 
 <body>
+<div id="record">NEW RECORD!</div>
+
 <div class="container">
   <h1>2048</h1>
 
@@ -138,13 +154,16 @@ h1 { margin: 10px 0; }
     <button data-value="4096" onclick="specialReset(4096)">4096 Reset</button>
     <button data-value="8192" onclick="specialReset(8192)">8192 Reset</button>
   </div>
+</div>
 
-  <div id="gameover">
-    <div class="box">
-      <h2>Game Over</h2>
-      <button onclick="init()">Reset</button>
-    </div>
+<div id="gameover">
+  <div class="overbox">
+    <h2>GAME OVER</h2>
+    <p>Final Score: <span id="finalScore">0</span></p>
+    <p>Best Score: <span id="finalBest">0</span></p>
+    <button onclick="init()">Restart</button>
   </div>
+</div>
 
 <script>
 const SIZE = 4;
@@ -152,13 +171,12 @@ let board = [];
 let score = 0;
 let best = Number(localStorage.getItem("best2048")) || 0;
 
-const scoreEl = document.getElementById("score")
-const bestEl = document.getElementById("best")
-
 const resetConditions = {2048:25000,4096:50000,8192:100000};
 const tileColors = {2048:"#edc22e",4096:"#000",8192:"#6a0dad"};
 
 function init() {
+  document.getElementById("gameover").style.display = "none";
+  document.getElementById("record").style.display = "none";
   board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   score = 0;
   addTile(); addTile();
@@ -212,43 +230,11 @@ function move(dir){
     if(score>best){
       best=score;
       localStorage.setItem("best2048",best);
+      showRecord();
     }
     draw();
+    if(!canMove())showGameOver();
   }
-}
-
-  if (moved) {
-  addTile();
-
-  if (score > best) {
-    best = score;
-    localStorage.setItem("best2048", best);
-  }
-
-  draw();
-
-  if (isGameOver()) {
-    document.getElementById("gameover").style.display = "flex";
-  }
-}
-  
-  function isGameOver() {
-  for (let i=0;i<SIZE;i++) {
-    for (let j=0;j<SIZE;j++) {
-      if (board[i][j] === 0) return false;
-      if (j < SIZE-1 && board[i][j] === board[i][j+1]) return false;
-      if (i < SIZE-1 && board[i][j] === board[i+1][j]) return false;
-    }
-  }
-  return true;
-}
-
-  function init() {
-  board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
-  score = 0;
-  addTile(); addTile();
-  document.getElementById("gameover").style.display = "none";
-  draw();
 }
 
 function draw(){
@@ -262,9 +248,30 @@ function draw(){
     d.textContent=v||"";
     b.appendChild(d);
   }
-  scoreEl.textContent=score;
-  bestEl.textContent=best;
+  document.getElementById("score").textContent=score;
+  document.getElementById("best").textContent=best;
   updateSpecialButtons();
+}
+
+function canMove(){
+  for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++){
+    if(board[i][j]===0) return true;
+    if(j<SIZE-1 && board[i][j]===board[i][j+1]) return true;
+    if(i<SIZE-1 && board[i][j]===board[i+1][j]) return true;
+  }
+  return false;
+}
+
+function showGameOver(){
+  document.getElementById("finalScore").textContent=score;
+  document.getElementById("finalBest").textContent=best;
+  document.getElementById("gameover").style.display="flex";
+}
+
+function showRecord(){
+  const r=document.getElementById("record");
+  r.style.display="block";
+  setTimeout(()=>r.style.display="none",1500);
 }
 
 function updateSpecialButtons(){
@@ -300,9 +307,9 @@ document.addEventListener("touchend",e=>{
   const dx=e.changedTouches[0].clientX-sx;
   const dy=e.changedTouches[0].clientY-sy;
   if(Math.abs(dx)>Math.abs(dy)){
-    if(dx>0)move("right"); else move("left");
+    dx>0?move("right"):move("left");
   }else{
-    if(dy>0)move("down"); else move("up");
+    dy>0?move("down"):move("up");
   }
 });
 document.addEventListener("touchmove",e=>e.preventDefault(),{passive:false});
@@ -311,4 +318,3 @@ init();
 </script>
 </body>
 </html>
-
