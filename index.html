@@ -189,7 +189,7 @@ button.locked{
   <button class="infoBtn" onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
 </div>
 
-<button id="missionBtn">📘 ミッション</button>
+<button id="missionBtn">ミッション</button>
 <div id="missionPanel" class="missionPanel hidden">
   <ul id="missionList"></ul>
   <div id="achievement"></div>
@@ -199,7 +199,7 @@ button.locked{
   <div id="gameoverContent">
     <h2>Game Over</h2>
     <p>Score: <span id="finalScore"></span></p>
-    <p id="newRecord" class="hidden">🎉 New Record!</p>
+    <p id="newRecord" class="hidden">New Record!</p>
     <button onclick="restart()">Restart</button>
   </div>
 </div>
@@ -231,9 +231,9 @@ const missionData=[
  {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達 (16384)"},
  {id:6,star:"★★★★☆",text:"Mission 6 : 300000点到達"},
  {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達 (32768)"},
- {id:8,star:"★☆☆☆☆",text:"Mission 8 : 750点以下でゲームオーバー"},
- {id:9,star:"★★☆☆☆",text:"Mission 9 : 500点以下でゲームオーバー"},
- {id:10,star:"★★★☆☆",text:"Mission 10 : 300点以下でゲームオーバー"}
+ {id:8,star:"★☆☆☆☆",text:"Mission 8 : 750点以下でGameOver"},
+ {id:9,star:"★★☆☆☆",text:"Mission 9 : 500点以下でGameOver"},
+ {id:10,star:"★★★☆☆",text:"Mission 10 : 250点以下でGameOver"}
 ];
 
 const boardElem=document.getElementById("board");
@@ -377,7 +377,7 @@ function endGame(){
   // ミッション8〜10のゲームオーバー条件判定
   if(score<=750) missions.m8=true;
   if(score<=500) missions.m9=true;
-  if(score<=300) missions.m10=true;
+  if(score<=250) missions.m10=true;
 
   document.getElementById("gameover").classList.add("show");
   renderMissionList();
