@@ -441,9 +441,9 @@ function endGame(){
   document.getElementById("newRecord").classList.toggle("hidden", score < best);
 
   // Mission8〜10はゲームオーバー時だけスコア条件チェック
-  if(score <= 500 && !missions.m8) missions.m8 = true;
-  if(score <= 300 && !missions.m9) missions.m9 = true;
-  if(score <= 150 && !missions.m10) missions.m10 = true;
+  if(score <= 500 && !missions.m8){ missions.m8 = true; showMissionNotify("Mission 8 クリア!"); }
+  if(score <= 300 && !missions.m9){ missions.m9 = true; showMissionNotify("Mission 9 クリア!"); }
+  if(score <= 150 && !missions.m10){ missions.m10 = true; showMissionNotify("Mission 10 クリア!"); }
 
   localStorage.setItem("missions", JSON.stringify(missions));
 
@@ -508,7 +508,7 @@ function renderMissionList(){
     `;
     list.appendChild(li);
   });
-  achievementElem.textContent = `ミッション達成度: ${clearedCount}/10`;
+  achievementElem.textContent = `ミッション達成度: ${clearedCount}/11`;
 }
 
 lockSelect.onchange = ()=>{
