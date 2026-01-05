@@ -159,13 +159,13 @@ button.locked{
 </div>
 
 <div id="lockControl">
-  <select id="lockSelect" disabled>
-    <option value="">方向ロック (Mission4で解放)</option>
-    <option value="up">↑ 上</option>
-    <option value="down">↓ 下</option>
-    <option value="left">← 左</option>
-    <option value="right">→ 右</option>
-  </select>
+  <select id="lockSelect">
+  <option value="">なし</option>
+  <option value="up">↑ 上</option>
+  <option value="down">↓ 下</option>
+  <option value="left">← 左</option>
+  <option value="right">→ 右</option>
+</select>
   <button class="infoBtn" onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入ります')">i</button>
 </div>
 
@@ -369,15 +369,15 @@ function canMove(){
 }
 
 function endGame(){
-  gameOver=true;
+  gameOver = true;
   localStorage.removeItem("save");
-  document.getElementById("finalScore").textContent=score;
-  document.getElementById("newRecord").classList.toggle("hidden",score<best);
+  document.getElementById("finalScore").textContent = score;
+  document.getElementById("newRecord").classList.toggle("hidden", score < best);
 
-  // ミッション8〜10のゲームオーバー条件判定
-  if(score<=750) missions.m8=true;
-  if(score<=500) missions.m9=true;
-  if(score<=250) missions.m10=true;
+  // Mission8〜10はゲームオーバー時だけスコア条件チェック
+  if(score <= 750 && !missions.m8) missions.m8 = true;
+  if(score <= 500 && !missions.m9) missions.m9 = true;
+  if(score <= 300 && !missions.m10) missions.m10 = true;
 
   document.getElementById("gameover").classList.add("show");
   renderMissionList();
@@ -459,9 +459,14 @@ function renderMissionList(){
 }
 
 lockSelect.onchange = ()=>{
+  if(lockSelect.value === "") {
+    lockedDirection = "";
+    return;
+  }
   if(!missions.m4){
     alert("Mission 4クリアで解放");
     lockSelect.value="";
+    lockedDirection = "";
     return;
   }
   lockedDirection = lockSelect.value;
