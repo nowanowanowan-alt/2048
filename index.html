@@ -19,6 +19,11 @@ body{
   text-align:center;
   overscroll-behavior:none;
 }
+
+html, body {
+  touch-action: manipulation;
+}
+  
 h1{margin:16px 0 6px;}
 
 #scorebar{
@@ -355,12 +360,22 @@ function updateMissionButtons(){
 }
 
 function specialReset(v){
-  if(v==2048&&!missions.m1)return alert("25000点到達で解放");
-  if(v==4096&&!missions.m2)return alert("50000点到達で解放");
-  if(v==8192&&!missions.m3)return alert("100000点到達で解放");
+  if(v===2048 && !missions.m1){
+    alert("Mission1クリアで解放");
+    return;
+  }
+  if(v===4096 && !missions.m2){
+    alert("Mission2クリアで解放");
+    return;
+  }
+  if(v===8192 && !missions.m3){
+    alert("Mission3クリアで解放");
+    return;
+  }
+
   board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
   board[0][0]=v;
-  score=v==2048?20000:v==4096?40000:80000;
+  score = (v===2048)?20000:(v===4096)?40000:80000;
   update();
 }
 
@@ -372,10 +387,19 @@ document.getElementById("missionBtn").onclick=()=>{
 function renderMissionList(){
   const list=document.getElementById("missionList");
   list.innerHTML="";
+
   missionData.forEach(m=>{
+    const cleared = missions["m"+m.id];
     const li=document.createElement("li");
-    if(missions["m"+m.id])li.classList.add("done");
-    li.innerHTML=`<span>${m.star}</span><span>${m.text}</span>`;
+    if(cleared) li.classList.add("done");
+
+    li.innerHTML = `
+      <span style="width:3em">${m.star}</span>
+      <span style="flex:1">${m.text}</span>
+      <span style="width:4em;text-align:right">
+        ${cleared ? "✓ CLEAR" : "✗"}
+      </span>
+    `;
     list.appendChild(li);
   });
 }
@@ -402,6 +426,16 @@ boardElem.addEventListener("touchend",e=>{
 });
 
 init();
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (event) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    event.preventDefault();
+  }
+  lastTouchEnd = now;
+}, { passive: false });
+  
 </script>
 </body>
 </html>
