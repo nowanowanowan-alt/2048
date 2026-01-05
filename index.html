@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2048</title>
+<title>2048 Ultimate</title>
 
 <style>
 *{
@@ -72,14 +72,9 @@ h1{margin:16px 0 6px;}
   box-shadow:0 0 0 3px rgba(255,255,255,.9);
 }
 
-.controls button{
-  font-size:18px;
-  padding:8px 14px;
-  margin:4px;
-}
-
+.controls button,
 .resetRow button{
-  font-size:14px;
+  font-size:16px;
   padding:6px 12px;
   margin:4px;
 }
@@ -91,33 +86,39 @@ button.locked{
 
 #missionBtn{margin-top:10px;}
 
-.modal, #gameover{
+.missionPanel{
+  max-width:320px;
+  margin:10px auto 0;
+  padding:12px;
+  background:#f3efe8;
+  border-radius:10px;
+  text-align:left;
+}
+.missionPanel ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+.missionPanel li{
+  font-size:14px;
+  padding:6px 0;
+  display:flex;
+  gap:8px;
+}
+.missionPanel li.done{color:#999;}
+
+.hidden{display:none;}
+
+#gameover{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.6);
+  display:none;
   justify-content:center;
   align-items:center;
   z-index:10;
 }
-
-#gameover{
-  display:none;
-}
-
-#gameover.show{
-  display:flex;
-}
-
-.hidden{display:none;}
-
-.modalContent{
-  background:#fff;
-  color:#000;
-  padding:20px;
-  border-radius:12px;
-  width:80%;
-  max-width:300px;
-}
+#gameover.show{display:flex;}
 
 #gameoverContent{
   background:#fff;
@@ -153,20 +154,14 @@ button.locked{
   <button id="r2048" onclick="specialReset(2048)">2048</button>
   <button id="r4096" onclick="specialReset(4096)">4096</button>
   <button id="r8192" onclick="specialReset(8192)">8192</button>
-  <button onclick="alert('最高スコア到達で特定状態から開始できます')">i</button>
 </div>
 
-<button id="missionBtn" onclick="openMission()">📜 ミッション</button>
-
-<div id="missionModal" class="modal hidden">
-  <div class="modalContent">
-    <h3>ミッション</h3>
-    <ul id="missionList"></ul>
-    <button onclick="closeMission()">閉じる</button>
-  </div>
+<button id="missionBtn">📘 ミッション</button>
+<div id="missionPanel" class="missionPanel hidden">
+  <ul id="missionList"></ul>
 </div>
 
-<div id="gameover" class="hidden">
+<div id="gameover">
   <div id="gameoverContent">
     <h2>Game Over</h2>
     <p>Score: <span id="finalScore"></span></p>
@@ -188,14 +183,29 @@ const colors={
   4096:"#000",8192:"#7b3fe4",16384:"#f08",32768:"#fff"
 };
 
-const missions={m1:false,m2:false,m3:false,m4:false};
+const missions={
+  m1:false,m2:false,m3:false,m4:false,m5:false,
+  m6:false,m7:false,m8:false,m9:false
+};
+
+const missionData=[
+ {id:1,star:"★☆☆☆",text:"Mission 1 : 25000点到達"},
+ {id:2,star:"★☆☆☆",text:"Mission 2 : 50000点到達"},
+ {id:3,star:"★★☆☆",text:"Mission 3 : 100000点到達"},
+ {id:4,star:"★★★☆",text:"Mission 4 : 200000点到達"},
+ {id:5,star:"★★★★",text:"Mission 5 : 300000点到達"},
+ {id:6,star:"★☆☆☆",text:"Mission 6 : 750点以下でゲームオーバー"},
+ {id:7,star:"★★☆☆",text:"Mission 7 : 500点以下でゲームオーバー"},
+ {id:8,star:"★★★☆",text:"Mission 8 : 300点以下でゲームオーバー"},
+ {id:9,star:"★★★★",text:"Mission 9 : 100点以下でゲームオーバー"}
+];
 
 const boardElem=document.getElementById("board");
 
 function init(){
   boardElem.innerHTML="";
   gameOver=false;
-  document.getElementById("gameover").classList.add("hidden");
+  document.getElementById("gameover").classList.remove("show");
 
   for(let i=0;i<SIZE*SIZE;i++){
     const c=document.createElement("div");
@@ -204,6 +214,9 @@ function init(){
   }
 
   const save=localStorage.getItem("save");
+  const ms=localStorage.getItem("missions");
+  if(ms) Object.assign(missions,JSON.parse(ms));
+
   if(save){
     const d=JSON.parse(save);
     board=d.board; score=d.score;
@@ -214,6 +227,7 @@ function init(){
 
   best=Number(localStorage.getItem("best")||0);
   update();
+  updateMissionButtons();
 }
 
 function spawn(){
@@ -246,6 +260,7 @@ function update(){
   document.getElementById("best").textContent=best;
   draw();
   localStorage.setItem("save",JSON.stringify({board,score}));
+  localStorage.setItem("missions",JSON.stringify(missions));
 }
 
 function slide(arr){
@@ -287,8 +302,8 @@ function move(dir){
   if(moved){
     spawn();
     if(score>best){best=score;localStorage.setItem("best",best);}
-    update();
     checkMissions();
+    update();
     if(!canMove())endGame();
   }
 }
@@ -305,35 +320,22 @@ function canMove(){
 function endGame(){
   gameOver=true;
   localStorage.removeItem("save");
-
-  document.getElementById("finalScore").textContent = score;
-
-  const isNew = score > best;
-  document.getElementById("newRecord")
-    .classList.toggle("hidden", !isNew);
-
-  if(isNew){
-    best = score;
-    localStorage.setItem("best", best);
-  }
-
+  document.getElementById("finalScore").textContent=score;
+  document.getElementById("newRecord").classList.toggle("hidden",score<best);
+  if(score<=750)missions.m6=true;
+  if(score<=500)missions.m7=true;
+  if(score<=300)missions.m8=true;
+  if(score<=100)missions.m9=true;
   document.getElementById("gameover").classList.add("show");
 }
 
 function restart(){
-  gameOver = false;
-
-  const go = document.getElementById("gameover");
-  go.classList.remove("show");   // ← これが抜けてた
-  go.classList.add("hidden");    // 保険
-
+  gameOver=false;
+  document.getElementById("gameover").classList.remove("show");
   localStorage.removeItem("save");
-
-  score = 0;
-  board = [...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  spawn();
-  spawn();
-
+  score=0;
+  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  spawn(); spawn();
   update();
 }
 
@@ -341,6 +343,8 @@ function checkMissions(){
   if(score>=25000)missions.m1=true;
   if(score>=50000)missions.m2=true;
   if(score>=100000)missions.m3=true;
+  if(score>=200000)missions.m4=true;
+  if(score>=300000)missions.m5=true;
   updateMissionButtons();
 }
 
@@ -360,18 +364,20 @@ function specialReset(v){
   update();
 }
 
-function openMission(){
+document.getElementById("missionBtn").onclick=()=>{
+  document.getElementById("missionPanel").classList.toggle("hidden");
+  renderMissionList();
+};
+
+function renderMissionList(){
   const list=document.getElementById("missionList");
-  list.innerHTML=`
-    <li>${missions.m1?"✅":"⬜"} 25000点</li>
-    <li>${missions.m2?"✅":"⬜"} 50000点</li>
-    <li>${missions.m3?"✅":"⬜"} 100000点</li>
-    <li>${missions.m4?"✅":"⬜"} 750点以下GameOver</li>
-  `;
-  document.getElementById("missionModal").classList.remove("hidden");
-}
-function closeMission(){
-  document.getElementById("missionModal").classList.add("hidden");
+  list.innerHTML="";
+  missionData.forEach(m=>{
+    const li=document.createElement("li");
+    if(missions["m"+m.id])li.classList.add("done");
+    li.innerHTML=`<span>${m.star}</span><span>${m.text}</span>`;
+    list.appendChild(li);
+  });
 }
 
 boardElem.addEventListener("touchstart",e=>{
