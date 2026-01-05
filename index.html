@@ -298,8 +298,16 @@ function fullReset(){
 
 function restart(){
   clearSave();
-  document.getElementById("gameover").classList.remove("show");
-  fullReset();
+
+  const over = document.getElementById("gameover");
+  over.classList.remove("show");
+
+  board = [...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  score = 0;
+  spawn();
+  spawn();
+  update();
+  draw();
 }
 
 /* ---------- game over ---------- */
@@ -315,6 +323,31 @@ function info(){
 }
 
 init();
+
+  let startX = 0, startY = 0;
+
+document.addEventListener("touchstart", e => {
+  if (e.touches.length !== 1) return;
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener("touchend", e => {
+  if (!startX || !startY) return;
+
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 30) move("R");
+    else if (dx < -30) move("L");
+  } else {
+    if (dy > 30) move("D");
+    else if (dy < -30) move("U");
+  }
+
+  startX = startY = 0;
+});
 </script>
 </body>
 </html>
