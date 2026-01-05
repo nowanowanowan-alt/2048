@@ -95,10 +95,17 @@ button.locked{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.6);
-  display:flex;
   justify-content:center;
   align-items:center;
   z-index:10;
+}
+
+#gameover{
+  display:none;
+}
+
+#gameover.show{
+  display:flex;
 }
 
 .hidden{display:none;}
@@ -298,18 +305,36 @@ function canMove(){
 function endGame(){
   gameOver=true;
   localStorage.removeItem("save");
-  document.getElementById("finalScore").textContent=score;
-  document.getElementById("newRecord").classList.toggle("hidden",score<best);
-  if(score<=750)missions.m4=true;
-  document.getElementById("gameover").classList.remove("hidden");
+
+  document.getElementById("finalScore").textContent = score;
+
+  const isNew = score > best;
+  document.getElementById("newRecord")
+    .classList.toggle("hidden", !isNew);
+
+  if(isNew){
+    best = score;
+    localStorage.setItem("best", best);
+  }
+
+  document.getElementById("gameover").classList.add("show");
 }
 
 function restart(){
-  gameOver=false;
-  document.getElementById("gameover").classList.add("hidden");
+  gameOver = false;
+
+  const go = document.getElementById("gameover");
+  go.classList.remove("show");   // ← これが抜けてた
+  go.classList.add("hidden");    // 保険
+
   localStorage.removeItem("save");
-  score=0;
-  init();
+
+  score = 0;
+  board = [...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  spawn();
+  spawn();
+
+  update();
 }
 
 function checkMissions(){
