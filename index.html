@@ -84,6 +84,35 @@ button{
   font-size:14px;
 }
 
+#missionBtn{
+  margin-top: 12px;
+  padding: 10px 16px;
+  font-size: 16px;
+}
+
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modalContent{
+  background: #fff;
+  color: #000;
+  padding: 20px;
+  border-radius: 12px;
+  width: 80%;
+  max-width: 320px;
+}
+
+.hidden{
+  display: none;
+}
+
 .locked{
   background:#aaa;
   color:#555;
@@ -136,6 +165,16 @@ button{
   <button onclick="info()">i</button>
 </div>
 
+<button id="missionBtn">📜 ミッション</button>
+
+<div id="missionModal" class="modal hidden">
+  <div class="modalContent">
+    <h2>ミッション</h2>
+    <ul id="missionList"></ul>
+    <button id="closeMission">閉じる</button>
+  </div>
+</div>
+  
 <div id="gameover">
   <div>GAME OVER</div>
   <div id="finalScore"></div>
@@ -180,7 +219,7 @@ function init(){
   }
   update();draw();
 }
-
+  
 /* ---------- game logic ---------- */
 function spawn(){
   let e=[];
@@ -252,6 +291,62 @@ function canMove(){
   return false;
 }
 
+let isTouchingBoard = false;
+
+const board = document.getElementById("board");
+
+board.addEventListener("touchstart", e => {
+  e.preventDefault();
+  isTouchingBoard = true;
+
+  const t = e.touches[0];
+  startX = t.clientX;
+  startY = t.clientY;
+}, { passive: false });
+
+board.addEventListener("touchmove", e => {
+  if (!isTouchingBoard) return;
+  e.preventDefault();
+}, { passive: false });
+
+board.addEventListener("touchend", e => {
+  if (!isTouchingBoard) return;
+
+  const t = e.changedTouches[0];
+  const dx = t.clientX - startX;
+  const dy = t.clientY - startY;
+
+  handleSwipe(dx, dy);
+  isTouchingBoard = false;
+});
+
+document.body.addEventListener("touchstart", () => {
+  isTouchingBoard = false;
+});
+
+  const missionBtn = document.getElementById("missionBtn");
+const missionModal = document.getElementById("missionModal");
+const closeMission = document.getElementById("closeMission");
+const missionList = document.getElementById("missionList");
+
+missionBtn.onclick = () => {
+  updateMissionList();
+  missionModal.classList.remove("hidden");
+};
+
+closeMission.onclick = () => {
+  missionModal.classList.add("hidden");
+};
+
+function updateMissionList(){
+  missionList.innerHTML = `
+    <li>${missions.m1 ? "✅" : "⬜"} ミッション1：25000点到達</li>
+    <li>${missions.m2 ? "✅" : "⬜"} ミッション2：50000点到達</li>
+    <li>${missions.m3 ? "✅" : "⬜"} ミッション3：100000点到達</li>
+    <li>${missions.m4 ? "✅" : "⬜"} ミッション4：750点以下でGame Over</li>
+  `;
+}
+  
 /* ---------- UI ---------- */
 function draw(){
   const b=document.getElementById("board");
