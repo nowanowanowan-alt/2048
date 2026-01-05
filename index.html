@@ -20,10 +20,8 @@ body{
   overscroll-behavior:none;
 }
 
-html, body {
-  touch-action: manipulation;
-}
-  
+html, body { touch-action: manipulation; }
+
 h1{margin:16px 0 6px;}
 
 #scorebar{
@@ -131,6 +129,24 @@ button.locked{
   padding:20px;
   border-radius:12px;
 }
+
+#lockControl{
+  margin-top:10px;
+}
+#lockSelect{
+  font-size:14px;
+  padding:4px 8px;
+}
+.infoBtn{
+  cursor:pointer;
+  font-size:14px;
+  margin-left:6px;
+  padding:2px 6px;
+  border-radius:4px;
+  background:#ddd;
+  border:none;
+}
+#achievement{margin-top:6px;font-size:14px;}
 </style>
 </head>
 
@@ -140,6 +156,17 @@ button.locked{
 <div id="scorebar">
   <div>Score: <span id="score">0</span></div>
   <div>Best: <span id="best">0</span></div>
+</div>
+
+<div id="lockControl">
+  <select id="lockSelect" disabled>
+    <option value="">方向ロック (Mission4で解放)</option>
+    <option value="up">↑ 上</option>
+    <option value="down">↓ 下</option>
+    <option value="left">← 左</option>
+    <option value="right">→ 右</option>
+  </select>
+  <button class="infoBtn" onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入ります')">i</button>
 </div>
 
 <div id="board"></div>
@@ -153,10 +180,11 @@ button.locked{
   </div>
 </div>
 
-<button onclick="restart()">RESET</button>
+<button onclick="resetConfirm()">RESET</button>
 
 <div class="resetRow">
   <button id="r2048" onclick="specialReset(2048)">2048</button>
+  <button class="infoBtn" onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
   <button id="r4096" onclick="specialReset(4096)">4096</button>
   <button id="r8192" onclick="specialReset(8192)">8192</button>
 </div>
@@ -164,6 +192,7 @@ button.locked{
 <button id="missionBtn">📘 ミッション</button>
 <div id="missionPanel" class="missionPanel hidden">
   <ul id="missionList"></ul>
+  <div id="achievement"></div>
 </div>
 
 <div id="gameover">
@@ -179,6 +208,7 @@ button.locked{
 const SIZE=4;
 let board=[], score=0, best=0, gameOver=false;
 let startX=0,startY=0,touching=false;
+let lockedDirection="";
 
 const colors={
   2:"#fff",4:"#f5d7b2",8:"#f2b179",16:"#f59563",
@@ -190,22 +220,26 @@ const colors={
 
 const missions={
   m1:false,m2:false,m3:false,m4:false,m5:false,
-  m6:false,m7:false,m8:false,m9:false
+  m6:false,m7:false,m8:false,m9:false,m10:false
 };
 
 const missionData=[
- {id:1,star:"★☆☆☆",text:"Mission 1 : 25000点到達"},
- {id:2,star:"★☆☆☆",text:"Mission 2 : 50000点到達"},
- {id:3,star:"★★☆☆",text:"Mission 3 : 100000点到達"},
- {id:4,star:"★★★☆",text:"Mission 4 : 200000点到達"},
- {id:5,star:"★★★★",text:"Mission 5 : 300000点到達"},
- {id:6,star:"★☆☆☆",text:"Mission 6 : 750点以下でゲームオーバー"},
- {id:7,star:"★★☆☆",text:"Mission 7 : 500点以下でゲームオーバー"},
- {id:8,star:"★★★☆",text:"Mission 8 : 300点以下でゲームオーバー"},
- {id:9,star:"★★★★",text:"Mission 9 : 100点以下でゲームオーバー"}
+ {id:1,star:"★☆☆☆☆",text:"Mission 1 : 25000点到達 (2048)"},
+ {id:2,star:"★☆☆☆☆",text:"Mission 2 : 50000点到達 (4096)"},
+ {id:3,star:"★★☆☆☆",text:"Mission 3 : 100000点到達 (8192)"},
+ {id:4,star:"★★★☆☆",text:"Mission 4 : 150000点到達"},
+ {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達 (16384)"},
+ {id:6,star:"★★★★☆",text:"Mission 6 : 300000点到達"},
+ {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達 (32768)"},
+ {id:8,star:"★☆☆☆☆",text:"Mission 8 : 750点以下でゲームオーバー"},
+ {id:9,star:"★★☆☆☆",text:"Mission 9 : 500点以下でゲームオーバー"},
+ {id:10,star:"★★★☆☆",text:"Mission 10 : 300点以下でゲームオーバー"}
 ];
 
 const boardElem=document.getElementById("board");
+const bestElem=document.getElementById("best");
+const lockSelect=document.getElementById("lockSelect");
+const achievementElem=document.getElementById("achievement");
 
 function init(){
   boardElem.innerHTML="";
@@ -239,7 +273,7 @@ function spawn(){
   const e=[];
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)
     if(board[r][c]==0)e.push([r,c]);
-  if(!e.length)return;
+  if(!e)return;
   const [r,c]=e[Math.random()*e.length|0];
   board[r][c]=Math.random()<0.9?2:4;
 }
@@ -262,10 +296,18 @@ function draw(){
 
 function update(){
   document.getElementById("score").textContent=score;
-  document.getElementById("best").textContent=best;
+  bestElem.textContent=best;
   draw();
   localStorage.setItem("save",JSON.stringify({board,score}));
   localStorage.setItem("missions",JSON.stringify(missions));
+  updateBestColor();
+}
+
+function updateBestColor(){
+  if(missions.m7) bestElem.style.color="pink";
+  else if(missions.m6) bestElem.style.color="purple";
+  else if(missions.m5) bestElem.style.color="red";
+  else bestElem.style.color="#000";
 }
 
 function slide(arr){
@@ -282,8 +324,13 @@ function slide(arr){
   return arr;
 }
 
+// --- move with lock ---
 function move(dir){
-  if(gameOver)return;
+  if(gameOver) return;
+  if(lockedDirection && lockedDirection===dir){
+    if(!confirm("この方向はロックされています。本当に動かしますか？")) return;
+  }
+
   let moved=false;
   for(let i=0;i<SIZE;i++){
     let line=[];
@@ -300,7 +347,7 @@ function move(dir){
       if(dir=="up"){r=j;c=i;}
       if(dir=="down"){r=SIZE-1-j;c=i;}
       if(dir=="right"){r=i;c=SIZE-1-j;}
-      if(board[r][c]!=sl[j])moved=true;
+      if(board[r][c]!=sl[j]) moved=true;
       board[r][c]=sl[j];
     }
   }
@@ -309,15 +356,15 @@ function move(dir){
     if(score>best){best=score;localStorage.setItem("best",best);}
     checkMissions();
     update();
-    if(!canMove())endGame();
+    if(!canMove()) endGame();
   }
 }
 
 function canMove(){
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
-    if(board[r][c]==0)return true;
-    if(r<3&&board[r][c]==board[r+1][c])return true;
-    if(c<3&&board[r][c]==board[r][c+1])return true;
+    if(board[r][c]==0) return true;
+    if(r<3 && board[r][c]==board[r+1][c]) return true;
+    if(c<3 && board[r][c]==board[r][c+1]) return true;
   }
   return false;
 }
@@ -327,11 +374,13 @@ function endGame(){
   localStorage.removeItem("save");
   document.getElementById("finalScore").textContent=score;
   document.getElementById("newRecord").classList.toggle("hidden",score<best);
-  if(score<=750)missions.m6=true;
-  if(score<=500)missions.m7=true;
-  if(score<=300)missions.m8=true;
-  if(score<=100)missions.m9=true;
+
+  if(score<=750)missions.m8=true;
+  if(score<=500)missions.m9=true;
+  if(score<=300)missions.m10=true;
+
   document.getElementById("gameover").classList.add("show");
+  renderMissionList();
 }
 
 function restart(){
@@ -344,12 +393,35 @@ function restart(){
   update();
 }
 
+// --- reset with confirm ---
+function resetConfirm(){
+  if(confirm("本当にリセットしますか？")) restart();
+}
+
+// --- special reset ---
+function specialReset(v){
+  if(v===2048 && !missions.m1){ alert("Mission1クリアで解放"); return; }
+  if(v===4096 && !missions.m2){ alert("Mission2クリアで解放"); return; }
+  if(v===8192 && !missions.m3){ alert("Mission3クリアで解放"); return; }
+
+  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  board[0][0]=v;
+  score = (v===2048)?20100:(v===4096)?44400:96900;
+  update();
+}
+
 function checkMissions(){
-  if(score>=25000)missions.m1=true;
-  if(score>=50000)missions.m2=true;
-  if(score>=100000)missions.m3=true;
-  if(score>=200000)missions.m4=true;
-  if(score>=300000)missions.m5=true;
+  if(score>=25000) missions.m1=true;
+  if(score>=50000) missions.m2=true;
+  if(score>=100000) missions.m3=true;
+  if(score>=150000) missions.m4=true;
+  if(score>=225000) missions.m5=true;
+  if(score>=300000) missions.m6=true;
+  if(score>=450000) missions.m7=true;
+
+  // unlock direction if mission4 cleared
+  lockSelect.disabled=!missions.m4;
+
   updateMissionButtons();
 }
 
@@ -357,26 +429,6 @@ function updateMissionButtons(){
   document.getElementById("r2048").className=missions.m1?"":"locked";
   document.getElementById("r4096").className=missions.m2?"":"locked";
   document.getElementById("r8192").className=missions.m3?"":"locked";
-}
-
-function specialReset(v){
-  if(v===2048 && !missions.m1){
-    alert("Mission1クリアで解放");
-    return;
-  }
-  if(v===4096 && !missions.m2){
-    alert("Mission2クリアで解放");
-    return;
-  }
-  if(v===8192 && !missions.m3){
-    alert("Mission3クリアで解放");
-    return;
-  }
-
-  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  board[0][0]=v;
-  score = (v===2048)?20000:(v===4096)?40000:80000;
-  update();
 }
 
 document.getElementById("missionBtn").onclick=()=>{
@@ -388,22 +440,37 @@ function renderMissionList(){
   const list=document.getElementById("missionList");
   list.innerHTML="";
 
+  let clearedCount=0;
   missionData.forEach(m=>{
     const cleared = missions["m"+m.id];
+    if(cleared) clearedCount++;
+
     const li=document.createElement("li");
     if(cleared) li.classList.add("done");
 
     li.innerHTML = `
       <span style="width:3em">${m.star}</span>
       <span style="flex:1">${m.text}</span>
-      <span style="width:4em;text-align:right">
-        ${cleared ? "✓ CLEAR" : "✗"}
+      <span style="width:3em;text-align:right">
+        ${cleared ? "済" : "未"}
       </span>
     `;
     list.appendChild(li);
   });
+  achievementElem.textContent = `ミッション達成度: ${clearedCount}/10`;
 }
 
+// --- direction lock select ---
+lockSelect.onchange = ()=>{
+  if(!missions.m4){
+    alert("Mission 4クリアで解放");
+    lockSelect.value="";
+    return;
+  }
+  lockedDirection = lockSelect.value;
+}
+
+// --- touch events ---
 boardElem.addEventListener("touchstart",e=>{
   touching=true;
   const t=e.touches[0];
@@ -411,17 +478,17 @@ boardElem.addEventListener("touchstart",e=>{
 },{passive:false});
 
 boardElem.addEventListener("touchend",e=>{
-  if(!touching)return;
+  if(!touching) return;
   touching=false;
   const t=e.changedTouches[0];
   const dx=t.clientX-startX;
   const dy=t.clientY-startY;
   if(Math.abs(dx)>Math.abs(dy)){
-    if(dx>30)move("right");
-    else if(dx<-30)move("left");
+    if(dx>30) move("right");
+    else if(dx<-30) move("left");
   }else{
-    if(dy>30)move("down");
-    else if(dy<-30)move("up");
+    if(dy>30) move("down");
+    else if(dy<-30) move("up");
   }
 });
 
@@ -435,7 +502,7 @@ document.addEventListener('touchend', function (event) {
   }
   lastTouchEnd = now;
 }, { passive: false });
-  
+
 </script>
 </body>
 </html>
