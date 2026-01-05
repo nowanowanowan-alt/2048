@@ -19,6 +19,10 @@ body{
   text-align:center;
 }
 
+  body{
+  overscroll-behavior: none;
+}
+
 h1{margin:10px 0}
 
 #top{
@@ -36,6 +40,10 @@ h1{margin:10px 0}
   background:#bbada0;
   padding:6px;
   border-radius:8px;
+}
+  
+#board{
+  touch-action: none;
 }
 
 .cell{
@@ -348,6 +356,17 @@ document.addEventListener("touchend", e => {
 
   startX = startY = 0;
 });
+
+  const boardElem = document.getElementById("board");
+
+boardElem.addEventListener("touchstart", e => {
+  e.preventDefault();
+}, { passive: false });
+
+boardElem.addEventListener("touchmove", e => {
+  e.preventDefault();
+}, { passive: false });
+  
 </script>
 </body>
 </html>
