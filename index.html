@@ -44,8 +44,9 @@ body{
   align-items:center;
   font-size:22px;
   font-weight:bold;
+  transition:transform .12s ease-in-out;
 }
-.spawn{animation:spawn .15s ease-out;}
+.spawn{animation:spawn .15s ease-out,glow .3s ease-out;}
 .merge{animation:merge .18s ease-out;}
 
 @keyframes spawn{from{transform:scale(0)}to{transform:scale(1)}}
@@ -53,6 +54,11 @@ body{
   0%{transform:scale(1)}
   50%{transform:scale(1.25)}
   100%{transform:scale(1)}
+}
+@keyframes glow{
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  50%{box-shadow:0 0 12px rgba(255,255,255,.9)}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
 /* tile colors */
@@ -134,6 +140,7 @@ body{
     <div class="mission">Mission 1: 25000点 <span id="m1">✗</span></div>
     <div class="mission">Mission 2: 50000点 <span id="m2">✗</span></div>
     <div class="mission">Mission 3: 100000点 <span id="m3">✗</span></div>
+    <div class="mission">Mission 4: 750点以下でGAME OVER <span id="m4">✗</span></div>
   </div>
 </div>
 
@@ -157,17 +164,19 @@ body{
 
 <script>
 const SIZE=4;
-let board,merged,score=0;
+let board,merged,spawned=null;
+let score=0;
 let best=Number(localStorage.getItem("best")||0);
-let recordBroken=false;
+let bestAtStart=best;
 
 const unlock={2048:25000,4096:50000,8192:100000};
 const missions=[25000,50000,100000];
+let mission4Done=localStorage.getItem("m4")==="1";
 
 function init(){
   merged=[...Array(SIZE)].map(()=>Array(SIZE).fill(false));
   document.getElementById("gameover").style.display="none";
-  recordBroken=false;
+  bestAtStart=best;
 
   if(!loadGame()){
     board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
@@ -184,6 +193,7 @@ function spawn(){
   if(!e.length) return;
   const [r,c]=e[Math.random()*e.length|0];
   board[r][c]=Math.random()<0.9?2:4;
+  spawned=[r,c];
 }
 
 function slide(row,r){
@@ -236,15 +246,26 @@ function canMove(){
 function endGame(){
   localStorage.removeItem("board");
   localStorage.removeItem("score");
+
   document.getElementById("finalScore").textContent=score;
   document.getElementById("finalBest").textContent=best;
-  if(recordBroken) document.getElementById("newRecord").style.display="block";
+
+  if(score>bestAtStart)
+    document.getElementById("newRecord").style.display="block";
+  else
+    document.getElementById("newRecord").style.display="none";
+
+  if(score<=750){
+    mission4Done=true;
+    localStorage.setItem("m4","1");
+  }
+
   document.getElementById("gameover").style.display="flex";
 }
 
 function update(){
   if(score>best){
-    best=score; recordBroken=true;
+    best=score;
     localStorage.setItem("best",best);
   }
   document.getElementById("score").textContent=score;
@@ -258,6 +279,10 @@ function updateMissions(){
     const e=document.getElementById("m"+(i+1));
     if(best>=m){ e.textContent="✔"; e.className="done"; }
   });
+  if(mission4Done){
+    document.getElementById("m4").textContent="✔";
+    document.getElementById("m4").className="done";
+  }
 }
 
 function draw(){
@@ -269,8 +294,11 @@ function draw(){
     d.className="cell"+(v?" n"+v:"");
     if(v) d.textContent=v;
     if(merged[i][j]) d.classList.add("merge");
+    if(spawned && spawned[0]===i && spawned[1]===j)
+      d.classList.add("spawn");
     b.appendChild(d);
   }
+  spawned=null;
 }
 
 function updateResetButtons(){
