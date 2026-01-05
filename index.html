@@ -166,7 +166,7 @@ button.locked{
   <option value="left">方向ロック ← 左</option>
   <option value="right">方向ロック → 右</option>
 </select>
-  <button class="infoBtn" onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入ります')">i</button>
+  <button class="infoBtn" onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入るようになります')">i</button>
 </div>
 
 <div id="board"></div>
@@ -379,6 +379,8 @@ function endGame(){
   if(score <= 500 && !missions.m9) missions.m9 = true;
   if(score <= 300 && !missions.m10) missions.m10 = true;
 
+  localStorage.setItem("missions", JSON.stringify(missions));
+
   document.getElementById("gameover").classList.add("show");
   renderMissionList();
 }
@@ -409,13 +411,13 @@ function specialReset(v){
 }
 
 function checkMissions(){
-  if(score>=25000) missions.m1=true;
-  if(score>=50000) missions.m2=true;
-  if(score>=100000) missions.m3=true;
-  if(score>=150000) missions.m4=true;
-  if(score>=225000) missions.m5=true;
-  if(score>=300000) missions.m6=true;
-  if(score>=450000) missions.m7=true;
+  if(best>=25000) missions.m1=true;
+  if(best>=50000) missions.m2=true;
+  if(best>=100000) missions.m3=true;
+  if(best>=150000) missions.m4=true;
+  if(best>=225000) missions.m5=true;
+  if(best>=300000) missions.m6=true;
+  if(best>=450000) missions.m7=true;
 
   // unlock direction if mission4 cleared
   lockSelect.disabled=!missions.m4;
