@@ -237,17 +237,18 @@ const missions={
 };
 
 const missionData=[
- {id:1,star:"★☆☆☆☆",text:"Mission 1 : 25000点到達"},
- {id:2,star:"★☆☆☆☆",text:"Mission 2 : 50000点到達"},
- {id:3,star:"★★☆☆☆",text:"Mission 3 : 100000点到達"},
- {id:4,star:"★★★☆☆",text:"Mission 4 : 150000点到達"},
- {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達"},
- {id:6,star:"★★★★☆",text:"Mission 6 : 300000点到達"},
- {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達"},
- {id:8,star:"★☆☆☆☆",text:"Mission 8 : 500点以下で終了"},
- {id:9,star:"★★☆☆☆",text:"Mission 9 : 300点以下で終了"},
- {id:10,star:"★★★☆☆",text:"Mission 10 : 150点以下で終了"}
-];
+  {id:1,star:"★☆☆☆☆",text:"Mission 1 : 25000点到達"},
+  {id:2,star:"★☆☆☆☆",text:"Mission 2 : 50000点到達"},
+  {id:3,star:"★★☆☆☆",text:"Mission 3 : 100000点到達"},
+  {id:4,star:"★★★☆☆",text:"Mission 4 : 150000点到達"},
+  {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達"},
+  {id:6,star:"★★★★☆",text:"Mission 6 : 300000点到達"},
+  {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達"},
+  {id:8,star:"★☆☆☆☆",text:"Mission 8 : 500点以下で終了"},
+  {id:9,star:"★★☆☆☆",text:"Mission 9 : 300点以下で終了"},
+  {id:10,star:"★★★☆☆",text:"Mission 10 : 150点以下で終了"}
+  {id:11, star:"★★★★☆", text:"Mission 11 : 2048を3つ同時に盤面に存在させる"}
+  ];
 
 const boardElem=document.getElementById("board");
 const bestElem=document.getElementById("best");
@@ -306,7 +307,17 @@ function draw(){
     }
   }
 }
-
+  
+function countTile(value){
+  let count = 0;
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(board[r][c] === value) count++;
+    }
+  }
+  return count;
+}
+  
 function update(){
   document.getElementById("score").textContent=score;
   bestElem.textContent=best;
@@ -354,6 +365,10 @@ function checkMissions(){
   if(best >= 225000) missions.m5 = true;
   if(best >= 300000) missions.m6 = true;
   if(best >= 450000) missions.m7 = true;
+  if(countTile(2048) >= 3 && !missions.m11){
+  missions.m11 = true;
+  showMissionNotify("Mission 11 クリア！");
+}
 
   // 達成した瞬間だけ通知
   for(let i=1;i<=7;i++){
