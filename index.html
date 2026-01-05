@@ -246,7 +246,7 @@ const missionData=[
   {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達"},
   {id:8,star:"★☆☆☆☆",text:"Mission 8 : 500点以下で終了"},
   {id:9,star:"★★☆☆☆",text:"Mission 9 : 300点以下で終了"},
-  {id:10,star:"★★★☆☆",text:"Mission 10 : 150点以下で終了"}
+  {id:10,star:"★★★☆☆",text:"Mission 10 : 150点以下で終了"},
   {id:11, star:"★★★★☆", text:"Mission 11 : 2048を3つ同時に盤面に存在させる"}
   ];
 
@@ -368,6 +368,9 @@ function checkMissions(){
   if(countTile(2048) >= 3 && !missions.m11){
   missions.m11 = true;
   showMissionNotify("Mission 11 クリア！");
+    // unlock direction if mission4 cleared
+  lockSelect.disabled=!missions.m4;
+    updateMissionButtons();
 }
 
   // 達成した瞬間だけ通知
@@ -470,21 +473,6 @@ function specialReset(v){
   board[0][0]=v;
   score = (v===2048)?20100:(v===4096)?44400:96900;
   update();
-}
-
-function checkMissions(){
-  if(best>=25000) missions.m1=true;
-  if(best>=50000) missions.m2=true;
-  if(best>=100000) missions.m3=true;
-  if(best>=150000) missions.m4=true;
-  if(best>=225000) missions.m5=true;
-  if(best>=300000) missions.m6=true;
-  if(best>=450000) missions.m7=true;
-
-  // unlock direction if mission4 cleared
-  lockSelect.disabled=!missions.m4;
-
-  updateMissionButtons();
 }
 
 function updateMissionButtons(){
