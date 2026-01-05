@@ -3,468 +3,327 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2048 Custom</title>
+<title>2048</title>
 
 <style>
 *{
-  -webkit-user-select:none;
+  box-sizing:border-box;
   user-select:none;
+  -webkit-user-select:none;
   -webkit-touch-callout:none;
 }
 
 body{
   margin:0;
-  background:#faf8ef;
-  font-family:sans-serif;
+  background:#faf6f0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
   text-align:center;
 }
 
-  body{
-  overscroll-behavior: none;
-}
+h1{ margin:16px 0 4px; }
 
-h1{margin:10px 0}
-
-#top{
+#scorebar{
   display:flex;
-  justify-content:space-around;
+  justify-content:center;
+  gap:24px;
   font-size:18px;
 }
 
 #board{
-  width: 320px;
-  height: 320px;       
-  margin: 20px auto;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 10px;
-  background: #bbada0;
-  border-radius: 10px;
-  touch-action: none;
-}
-
-.tile{
-  width: 100%;
-  height: 100%;
+  width:90vw;
+  max-width:320px;
+  aspect-ratio:1/1;
+  margin:20px auto;
+  background:#bbada0;
+  border-radius:10px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:10px;
+  padding:10px;
+  touch-action:none;
 }
 
 .cell{
-  width:70px;
-  height:70px;
   background:#cdc1b4;
   border-radius:6px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-weight:bold;
-  font-size:22px;
-  transition:transform .12s ease;
+  position:relative;
 }
 
-/* animations */
-@keyframes spawn{0%{transform:scale(.6)}100%{transform:scale(1)}}
-@keyframes merge{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
-.spawn{animation:spawn .15s ease}
-.merge{animation:merge .18s ease}
+.tile{
+  position:absolute;
+  inset:0;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  font-weight:bold;
+  animation: pop 0.15s ease;
+}
 
-/* colors */
-.n2{background:#eee4da}
-.n4{background:#f0d9c2}
-.n8{background:#f2b179}
-.n16{background:#f59563}
-.n32{background:#f67c5f}
-.n64{background:#f65e3b;color:#fff}
-.n128,.n256,.n512,.n1024,.n2048{background:#edcf72}
-.n4096{background:#000;color:#fff}
-.n8192{background:purple;color:#fff}
-.n16384{background:pink}
-.n32768{background:#fff}
+@keyframes pop{
+  from{ transform:scale(0.8); }
+  to{ transform:scale(1); }
+}
 
-button{
+.tile.new{
+  box-shadow:0 0 0 3px rgba(255,255,255,0.8);
+}
+
+.controls{
+  margin-top:10px;
+}
+
+.controls button{
+  font-size:18px;
   margin:4px;
-  padding:6px 10px;
-  font-size:14px;
+  padding:8px 14px;
 }
 
 #missionBtn{
-  margin-top: 12px;
-  padding: 10px 16px;
-  font-size: 16px;
+  margin-top:10px;
+  font-size:16px;
 }
 
 .modal{
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
+
+.hidden{ display:none; }
 
 .modalContent{
-  background: #fff;
-  color: #000;
-  padding: 20px;
-  border-radius: 12px;
-  width: 80%;
-  max-width: 320px;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  width:80%;
+  max-width:300px;
 }
 
-.hidden{
-  display: none;
-}
-
-.locked{
-  background:#aaa;
-  color:#555;
-}
-
-/* Game Over overlay */
 #gameover{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.6);
+  background:rgba(0,0,0,0.6);
   color:#fff;
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
-  font-size:22px;
+}
 
-  opacity:0;
-  pointer-events:none;
-  transition:.2s;
-}
-#gameover.show{
-  opacity:1;
-  pointer-events:auto;
-}
 </style>
 </head>
 
 <body>
-<h1>2048</h1>
 
-<div id="top">
+<h1>2048</h1>
+<div id="scorebar">
   <div>Score: <span id="score">0</span></div>
   <div>Best: <span id="best">0</span></div>
 </div>
 
 <div id="board"></div>
 
-<div>
-  <button onclick="move('U')">↑</button><br>
-  <button onclick="move('L')">←</button>
-  <button onclick="move('D')">↓</button>
-  <button onclick="move('R')">→</button><br><br>
-
-  <button onclick="fullReset()">RESET</button><br><br>
-
-  <button id="r2048" onclick="specialReset(2048,20000,1)">2048</button>
-  <button id="r4096" onclick="specialReset(4096,40000,2)">4096</button>
-  <button id="r8192" onclick="specialReset(8192,80000,3)">8192</button>
-  <button onclick="info()">i</button>
+<div class="controls">
+  <div>
+    <button onclick="move('up')">↑</button>
+  </div>
+  <div>
+    <button onclick="move('left')">←</button>
+    <button onclick="move('down')">↓</button>
+    <button onclick="move('right')">→</button>
+  </div>
 </div>
 
 <button id="missionBtn">📜 ミッション</button>
 
 <div id="missionModal" class="modal hidden">
   <div class="modalContent">
-    <h2>ミッション</h2>
-    <ul id="missionList"></ul>
-    <button id="closeMission">閉じる</button>
+    <h3>ミッション</h3>
+    <ul>
+      <li>25000点到達</li>
+      <li>50000点到達</li>
+      <li>100000点到達</li>
+      <li>750点以下でGame Over</li>
+    </ul>
+    <button onclick="closeMission()">閉じる</button>
   </div>
 </div>
-  
-<div id="gameover">
-  <div>GAME OVER</div>
-  <div id="finalScore"></div>
-  <div id="newRecord"></div>
+
+<div id="gameover" class="hidden">
+  <h2>Game Over</h2>
   <button onclick="restart()">Restart</button>
 </div>
 
 <script>
 const SIZE=4;
-let board=[],score=0;
-let best=Number(localStorage.getItem("best"))||0;
-document.getElementById("best").textContent=best;
+let board=[], score=0, best=0;
+let startX=0, startY=0, touching=false;
 
-/* ---------- save / load ---------- */
-function saveGame(){
-  localStorage.setItem("board",JSON.stringify(board));
-  localStorage.setItem("score",score);
-}
-function loadGame(){
-  let b=localStorage.getItem("board");
-  let s=localStorage.getItem("score");
-  if(b && s){
-    board=JSON.parse(b);
-    score=Number(s);
-    return true;
-  }
-  return false;
-}
-function clearSave(){
-  localStorage.removeItem("board");
-  localStorage.removeItem("score");
-}
+const boardElem=document.getElementById("board");
 
-/* ---------- init ---------- */
 function init(){
-  document.getElementById("gameover").classList.remove("show");
-
-  if(!loadGame()){
-    board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-    score=0;
-    spawn();spawn();
+  boardElem.innerHTML="";
+  board=[];
+  for(let i=0;i<SIZE*SIZE;i++){
+    const c=document.createElement("div");
+    c.className="cell";
+    boardElem.appendChild(c);
   }
-  update();draw();
+
+  const saved=localStorage.getItem("save");
+  if(saved){
+    const d=JSON.parse(saved);
+    board=d.board;
+    score=d.score;
+  }else{
+    board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+    spawn(); spawn();
+  }
+
+  best=Number(localStorage.getItem("best")||0);
+  update();
 }
-  
-/* ---------- game logic ---------- */
+
 function spawn(){
-  let e=[];
-  for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++)
-    if(!board[i][j]) e.push([i,j]);
-  if(!e.length) return;
-  let [r,c]=e[Math.random()*e.length|0];
+  const empty=[];
+  for(let r=0;r<SIZE;r++)
+    for(let c=0;c<SIZE;c++)
+      if(board[r][c]==0) empty.push([r,c]);
+
+  if(empty.length==0) return;
+  const [r,c]=empty[Math.floor(Math.random()*empty.length)];
   board[r][c]=Math.random()<0.9?2:4;
+}
+
+function draw(){
+  const cells=[...boardElem.children];
+  cells.forEach(c=>c.innerHTML="");
+
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const v=board[r][c];
+      if(v){
+        const t=document.createElement("div");
+        t.className="tile";
+        t.textContent=v;
+        t.style.background="#eee4da";
+        t.style.color="#000";
+        cells[r*SIZE+c].appendChild(t);
+      }
+    }
+  }
+}
+
+function update(){
+  document.getElementById("score").textContent=score;
+  document.getElementById("best").textContent=best;
+  draw();
+  localStorage.setItem("save",JSON.stringify({board,score}));
 }
 
 function slide(arr){
   arr=arr.filter(v=>v);
   for(let i=0;i<arr.length-1;i++){
-    if(arr[i]===arr[i+1]){
+    if(arr[i]==arr[i+1]){
       arr[i]*=2;
       score+=arr[i];
-      arr.splice(i+1,1);
+      arr[i+1]=0;
     }
   }
+  arr=arr.filter(v=>v);
   while(arr.length<SIZE) arr.push(0);
   return arr;
 }
 
 function move(dir){
   let moved=false;
-
   for(let i=0;i<SIZE;i++){
-    if(dir==="L"){
-      let r=slide(board[i]);
-      if(board[i].join()!=r.join()) moved=true;
-      board[i]=r;
+    let line=[];
+    for(let j=0;j<SIZE;j++){
+      let r=i,c=j;
+      if(dir=="up"){ r=j; c=i; }
+      if(dir=="down"){ r=SIZE-1-j; c=i; }
+      if(dir=="right"){ r=i; c=SIZE-1-j; }
+      line.push(board[r][c]);
     }
-    if(dir==="R"){
-      let r=slide([...board[i]].reverse()).reverse();
-      if(board[i].join()!=r.join()) moved=true;
-      board[i]=r;
-    }
-    if(dir==="U"){
-      let col=slide(board.map(v=>v[i]));
-      for(let j=0;j<SIZE;j++){
-        if(board[j][i]!==col[j]) moved=true;
-        board[j][i]=col[j];
-      }
-    }
-    if(dir==="D"){
-      let col=slide(board.map(v=>v[i]).reverse()).reverse();
-      for(let j=0;j<SIZE;j++){
-        if(board[j][i]!==col[j]) moved=true;
-        board[j][i]=col[j];
-      }
+    let sl=slide(line);
+    for(let j=0;j<SIZE;j++){
+      let r=i,c=j;
+      if(dir=="up"){ r=j; c=i; }
+      if(dir=="down"){ r=SIZE-1-j; c=i; }
+      if(dir=="right"){ r=i; c=SIZE-1-j; }
+      if(board[r][c]!=sl[j]) moved=true;
+      board[r][c]=sl[j];
     }
   }
-
   if(moved){
     spawn();
+    if(score>best){
+      best=score;
+      localStorage.setItem("best",best);
+    }
     update();
-    draw();
-    saveGame();
-    if(!canMove()) endGame();
+    if(!canMove()) gameOver();
   }
 }
 
 function canMove(){
-  for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++){
-    if(!board[i][j]) return true;
-    if(board[i][j]===board[i]?.[j+1]) return true;
-    if(board[i][j]===board[i+1]?.[j]) return true;
-  }
+  for(let r=0;r<SIZE;r++)
+    for(let c=0;c<SIZE;c++){
+      if(board[r][c]==0) return true;
+      if(r<3&&board[r][c]==board[r+1][c]) return true;
+      if(c<3&&board[r][c]==board[r][c+1]) return true;
+    }
   return false;
 }
 
-let isTouchingBoard = false;
-
-const board = document.getElementById("board");
-
-board.addEventListener("touchstart", e => {
-  e.preventDefault();
-  isTouchingBoard = true;
-
-  const t = e.touches[0];
-  startX = t.clientX;
-  startY = t.clientY;
-}, { passive: false });
-
-board.addEventListener("touchmove", e => {
-  if (!isTouchingBoard) return;
-  e.preventDefault();
-}, { passive: false });
-
-board.addEventListener("touchend", e => {
-  if (!isTouchingBoard) return;
-
-  const t = e.changedTouches[0];
-  const dx = t.clientX - startX;
-  const dy = t.clientY - startY;
-
-  handleSwipe(dx, dy);
-  isTouchingBoard = false;
-});
-
-document.body.addEventListener("touchstart", () => {
-  isTouchingBoard = false;
-});
-
-  const missionBtn = document.getElementById("missionBtn");
-const missionModal = document.getElementById("missionModal");
-const closeMission = document.getElementById("closeMission");
-const missionList = document.getElementById("missionList");
-
-missionBtn.onclick = () => {
-  updateMissionList();
-  missionModal.classList.remove("hidden");
-};
-
-closeMission.onclick = () => {
-  missionModal.classList.add("hidden");
-};
-
-function updateMissionList(){
-  missionList.innerHTML = `
-    <li>${missions.m1 ? "✅" : "⬜"} ミッション1：25000点到達</li>
-    <li>${missions.m2 ? "✅" : "⬜"} ミッション2：50000点到達</li>
-    <li>${missions.m3 ? "✅" : "⬜"} ミッション3：100000点到達</li>
-    <li>${missions.m4 ? "✅" : "⬜"} ミッション4：750点以下でGame Over</li>
-  `;
-}
-  
-/* ---------- UI ---------- */
-function draw(){
-  const b=document.getElementById("board");
-  b.innerHTML="";
-  for(let r of board)for(let v of r){
-    let d=document.createElement("div");
-    d.className="cell"+(v?" n"+v:"");
-    d.textContent=v||"";
-    b.appendChild(d);
-  }
-}
-
-function update(){
-  document.getElementById("score").textContent=score;
-  if(score>best){
-    best=score;
-    localStorage.setItem("best",best);
-    document.getElementById("best").textContent=best;
-  }
-  updateLocks();
-}
-
-function updateLocks(){
-  lock("r2048",best<25000);
-  lock("r4096",best<50000);
-  lock("r8192",best<100000);
-}
-function lock(id,state){
-  document.getElementById(id).classList.toggle("locked",state);
-}
-
-/* ---------- resets ---------- */
-function specialReset(v,s,m){
-  if((m==1&&best<25000)||(m==2&&best<50000)||(m==3&&best<100000)){
-    alert("ミッション"+m+"をクリアすると解放");
-    return;
-  }
-  score=s;
-  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  board[0][0]=v;
-  saveGame();
-  update();draw();
-}
-
-function fullReset(){
-  clearSave();
-  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  score=0;
-  spawn();spawn();
-  update();draw();
+function gameOver(){
+  localStorage.removeItem("save");
+  document.getElementById("gameover").classList.remove("hidden");
 }
 
 function restart(){
-  clearSave();
-
-  const over = document.getElementById("gameover");
-  over.classList.remove("show");
-
-  board = [...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  score = 0;
-  spawn();
-  spawn();
-  update();
-  draw();
+  document.getElementById("gameover").classList.add("hidden");
+  localStorage.removeItem("save");
+  score=0;
+  init();
 }
 
-/* ---------- game over ---------- */
-function endGame(){
-  clearSave();
-  document.getElementById("finalScore").textContent="Score: "+score;
-  document.getElementById("newRecord").textContent=score===best?"New Record!":"";
-  document.getElementById("gameover").classList.add("show");
-}
+boardElem.addEventListener("touchstart",e=>{
+  touching=true;
+  const t=e.touches[0];
+  startX=t.clientX; startY=t.clientY;
+},{passive:false});
 
-function info(){
-  alert("最高スコアが一定値に到達すると、特定タイルからゲームを開始できます");
-}
-
-init();
-
-  let startX = 0, startY = 0;
-
-document.addEventListener("touchstart", e => {
-  if (e.touches.length !== 1) return;
-  startX = e.touches[0].clientX;
-  startY = e.touches[0].clientY;
-}, { passive: true });
-
-document.addEventListener("touchend", e => {
-  if (!startX || !startY) return;
-
-  const dx = e.changedTouches[0].clientX - startX;
-  const dy = e.changedTouches[0].clientY - startY;
-
-  if (Math.abs(dx) > Math.abs(dy)) {
-    if (dx > 30) move("R");
-    else if (dx < -30) move("L");
-  } else {
-    if (dy > 30) move("D");
-    else if (dy < -30) move("U");
+boardElem.addEventListener("touchend",e=>{
+  if(!touching) return;
+  touching=false;
+  const t=e.changedTouches[0];
+  const dx=t.clientX-startX;
+  const dy=t.clientY-startY;
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>30) move("right");
+    else if(dx<-30) move("left");
+  }else{
+    if(dy>30) move("down");
+    else if(dy<-30) move("up");
   }
-
-  startX = startY = 0;
 });
 
-  const boardElem = document.getElementById("board");
+function closeMission(){
+  document.getElementById("missionModal").classList.add("hidden");
+}
+document.getElementById("missionBtn").onclick=()=>{
+  document.getElementById("missionModal").classList.remove("hidden");
+};
 
-boardElem.addEventListener("touchstart", e => {
-  e.preventDefault();
-}, { passive: false });
-
-boardElem.addEventListener("touchmove", e => {
-  e.preventDefault();
-}, { passive: false });
-  
+init();
 </script>
 </body>
 </html>
