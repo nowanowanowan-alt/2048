@@ -184,9 +184,9 @@ button.locked{
 
 <div class="resetRow">
   <button id="r2048" onclick="specialReset(2048)">2048</button>
-  <button class="infoBtn" onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
   <button id="r4096" onclick="specialReset(4096)">4096</button>
   <button id="r8192" onclick="specialReset(8192)">8192</button>
+  <button class="infoBtn" onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
 </div>
 
 <button id="missionBtn">📘 ミッション</button>
@@ -324,7 +324,6 @@ function slide(arr){
   return arr;
 }
 
-// --- move with lock ---
 function move(dir){
   if(gameOver) return;
   if(lockedDirection && lockedDirection===dir){
@@ -375,9 +374,10 @@ function endGame(){
   document.getElementById("finalScore").textContent=score;
   document.getElementById("newRecord").classList.toggle("hidden",score<best);
 
-  if(score<=750)missions.m8=true;
-  if(score<=500)missions.m9=true;
-  if(score<=300)missions.m10=true;
+  // ミッション8〜10のゲームオーバー条件判定
+  if(score<=750) missions.m8=true;
+  if(score<=500) missions.m9=true;
+  if(score<=300) missions.m10=true;
 
   document.getElementById("gameover").classList.add("show");
   renderMissionList();
@@ -393,12 +393,10 @@ function restart(){
   update();
 }
 
-// --- reset with confirm ---
 function resetConfirm(){
   if(confirm("本当にリセットしますか？")) restart();
 }
 
-// --- special reset ---
 function specialReset(v){
   if(v===2048 && !missions.m1){ alert("Mission1クリアで解放"); return; }
   if(v===4096 && !missions.m2){ alert("Mission2クリアで解放"); return; }
@@ -460,7 +458,6 @@ function renderMissionList(){
   achievementElem.textContent = `ミッション達成度: ${clearedCount}/10`;
 }
 
-// --- direction lock select ---
 lockSelect.onchange = ()=>{
   if(!missions.m4){
     alert("Mission 4クリアで解放");
@@ -470,7 +467,6 @@ lockSelect.onchange = ()=>{
   lockedDirection = lockSelect.value;
 }
 
-// --- touch events ---
 boardElem.addEventListener("touchstart",e=>{
   touching=true;
   const t=e.touches[0];
