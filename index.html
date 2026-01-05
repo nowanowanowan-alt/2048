@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2048 Ultimate</title>
+<title>My2048</title>
 
 <style>
 *{
@@ -61,7 +61,7 @@ h1{margin:16px 0 6px;}
   justify-content:center;
   font-weight:bold;
   font-size:24px;
-  transition:transform 1.25s ease;
+  transition:transform .15s ease;
 }
 
 .tile.merge{ animation:merge .15s; }
@@ -171,6 +171,19 @@ button.locked{
 
 <div id="board"></div>
 
+<div id="missionNotify" style="
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #fffae0;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  display: none;
+  z-index: 20;
+  font-weight: bold;">Mission Cleared!</div>
+
 <div class="controls">
   <div><button onclick="move('up')">↑</button></div>
   <div>
@@ -224,16 +237,16 @@ const missions={
 };
 
 const missionData=[
- {id:1,star:"★☆☆☆☆",text:"Mission 1 : 25000点到達 (2048)"},
- {id:2,star:"★☆☆☆☆",text:"Mission 2 : 50000点到達 (4096)"},
- {id:3,star:"★★☆☆☆",text:"Mission 3 : 100000点到達 (8192)"},
+ {id:1,star:"★☆☆☆☆",text:"Mission 1 : 25000点到達"},
+ {id:2,star:"★☆☆☆☆",text:"Mission 2 : 50000点到達"},
+ {id:3,star:"★★☆☆☆",text:"Mission 3 : 100000点到達"},
  {id:4,star:"★★★☆☆",text:"Mission 4 : 150000点到達"},
- {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達 (16384)"},
+ {id:5,star:"★★★★☆",text:"Mission 5 : 225000点到達"},
  {id:6,star:"★★★★☆",text:"Mission 6 : 300000点到達"},
- {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達 (32768)"},
- {id:8,star:"★☆☆☆☆",text:"Mission 8 : 750点以下でGameOver"},
- {id:9,star:"★★☆☆☆",text:"Mission 9 : 500点以下でGameOver"},
- {id:10,star:"★★★☆☆",text:"Mission 10 : 250点以下でGameOver"}
+ {id:7,star:"★★★★★",text:"Mission 7 : 450000点到達"},
+ {id:8,star:"★☆☆☆☆",text:"Mission 8 : 500点以下で終了"},
+ {id:9,star:"★★☆☆☆",text:"Mission 9 : 300点以下で終了"},
+ {id:10,star:"★★★☆☆",text:"Mission 10 : 150点以下で終了"}
 ];
 
 const boardElem=document.getElementById("board");
@@ -324,6 +337,40 @@ function slide(arr){
   return arr;
 }
 
+function showMissionNotify(text){
+  const el = document.getElementById("missionNotify");
+  el.textContent = text;
+  el.style.display = "block";
+  setTimeout(()=>{ el.style.display = "none"; }, 2000); // 2秒で自動消滅
+}
+
+function checkMissions(){
+  const prev = {...missions}; // 前回の達成状態を保存
+
+  if(best >= 25000) missions.m1 = true;
+  if(best >= 50000) missions.m2 = true;
+  if(best >= 100000) missions.m3 = true;
+  if(best >= 150000) missions.m4 = true;
+  if(best >= 225000) missions.m5 = true;
+  if(best >= 300000) missions.m6 = true;
+  if(best >= 450000) missions.m7 = true;
+
+  // 達成した瞬間だけ通知
+  for(let i=1;i<=7;i++){
+    if(missions["m"+i] && !prev["m"+i]){
+      showMissionNotify(`Mission ${i} クリア!`);
+    }
+  }
+
+  lockSelect.disabled = !missions.m4;
+  updateMissionButtons();
+  localStorage.setItem("missions", JSON.stringify(missions));
+}
+
+if(score <= 500 && !missions.m8){ missions.m8 = true; showMissionNotify("Mission 8 クリア!"); }
+if(score <= 300 && !missions.m9){ missions.m9 = true; showMissionNotify("Mission 9 クリア!"); }
+if(score <= 150 && !missions.m10){ missions.m10 = true; showMissionNotify("Mission 10 クリア!"); }
+
 function move(dir){
   if(gameOver) return;
   if(lockedDirection && lockedDirection===dir){
@@ -375,9 +422,9 @@ function endGame(){
   document.getElementById("newRecord").classList.toggle("hidden", score < best);
 
   // Mission8〜10はゲームオーバー時だけスコア条件チェック
-  if(score <= 750 && !missions.m8) missions.m8 = true;
-  if(score <= 500 && !missions.m9) missions.m9 = true;
-  if(score <= 300 && !missions.m10) missions.m10 = true;
+  if(score <= 500 && !missions.m8) missions.m8 = true;
+  if(score <= 300 && !missions.m9) missions.m9 = true;
+  if(score <= 150 && !missions.m10) missions.m10 = true;
 
   localStorage.setItem("missions", JSON.stringify(missions));
 
