@@ -2,18 +2,24 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>2048 Custom</title>
 
 <style>
+*{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+
 body{
   margin:0;
   background:#faf8ef;
   font-family:sans-serif;
-  touch-action:none;
+  text-align:center;
 }
 
-h1{text-align:center;margin:10px 0}
+h1{margin:10px 0}
 
 #top{
   display:flex;
@@ -42,26 +48,15 @@ h1{text-align:center;margin:10px 0}
   align-items:center;
   font-weight:bold;
   font-size:22px;
-  transition:transform .12s ease-in-out;
+  transition:transform .12s ease;
 }
 
-/* spawn & merge */
-@keyframes spawn{0%{transform:scale(0.6)}100%{transform:scale(1)}}
-@keyframes glow{
-  0%{box-shadow:none}
-  50%{box-shadow:0 0 12px white}
-  100%{box-shadow:none}
-}
-.spawn{animation:spawn .15s ease-out,glow .3s ease-out}
+@keyframes spawn{0%{transform:scale(.6)}100%{transform:scale(1)}}
+@keyframes merge{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
 
-@keyframes merge{
-  0%{transform:scale(1)}
-  50%{transform:scale(1.25)}
-  100%{transform:scale(1)}
-}
-.merge{animation:merge .18s ease-out}
+.spawn{animation:spawn .15s ease}
+.merge{animation:merge .18s ease}
 
-/* tile colors */
 .n2{background:#eee4da}
 .n4{background:#f0d9c2}
 .n8{background:#f2b179}
@@ -74,18 +69,23 @@ h1{text-align:center;margin:10px 0}
 .n16384{background:pink}
 .n32768{background:#fff}
 
-/* buttons */
-#controls{text-align:center}
-button{margin:4px;padding:6px 10px;font-size:14px}
+button{
+  margin:4px;
+  padding:6px 10px;
+  font-size:14px;
+}
 
-.locked{background:#aaa;color:#555}
+.locked{
+  background:#aaa;
+  color:#555;
+}
 
 #gameover{
   display:none;
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.6);
-  color:white;
+  color:#fff;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -105,7 +105,7 @@ button{margin:4px;padding:6px 10px;font-size:14px}
 
 <div id="board"></div>
 
-<div id="controls">
+<div>
   <button onclick="move('U')">↑</button><br>
   <button onclick="move('L')">←</button>
   <button onclick="move('D')">↓</button>
@@ -113,9 +113,9 @@ button{margin:4px;padding:6px 10px;font-size:14px}
 
   <button onclick="fullReset()">RESET</button><br><br>
 
-  <button id="r2048" onclick="specialReset(2048,20000)">2048</button>
-  <button id="r4096" onclick="specialReset(4096,40000)">4096</button>
-  <button id="r8192" onclick="specialReset(8192,80000)">8192</button>
+  <button id="r2048" onclick="specialReset(2048,20000,1)">2048</button>
+  <button id="r4096" onclick="specialReset(4096,40000,2)">4096</button>
+  <button id="r8192" onclick="specialReset(8192,80000,3)">8192</button>
   <button onclick="info()">i</button>
 </div>
 
@@ -128,20 +128,14 @@ button{margin:4px;padding:6px 10px;font-size:14px}
 
 <script>
 const SIZE=4;
-let board,score=0,spawned=null,mergedPos=[];
+let board=[],score=0;
 let best=Number(localStorage.getItem("best"))||0;
 document.getElementById("best").textContent=best;
 
 function init(){
-  mergedPos=[];
-  spawned=null;
-  document.getElementById("gameover").style.display="none";
-
-  if(!loadGame()){
-    board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-    score=0;
-    spawn();spawn();
-  }
+  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  score=0;
+  spawn();spawn();
   update();draw();
 }
 
@@ -150,50 +144,46 @@ function spawn(){
   for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++)
     if(!board[i][j]) e.push([i,j]);
   if(!e.length) return;
-  const [r,c]=e[Math.random()*e.length|0];
+  let [r,c]=e[Math.random()*e.length|0];
   board[r][c]=Math.random()<0.9?2:4;
-  spawned=[r,c];
 }
 
-function slide(row,r,dir){
-  let res=[],skip=false;
-  for(let i=0;i<row.length;i++){
-    if(skip){skip=false;continue}
-    if(row[i]&&row[i]===row[i+1]){
-      let v=row[i]*2;score+=v;
-      let c=res.length;
-      if(dir==="R"||dir==="D")c=SIZE-1-c;
-      mergedPos.push(dir==="L"||dir==="R"?[r,c]:[c,r]);
-      res.push(v);skip=true;
-    }else res.push(row[i]);
+function slide(arr){
+  arr=arr.filter(v=>v);
+  for(let i=0;i<arr.length-1;i++){
+    if(arr[i]===arr[i+1]){
+      arr[i]*=2;
+      score+=arr[i];
+      arr.splice(i+1,1);
+    }
   }
-  while(res.length<SIZE)res.push(0);
-  return res;
+  while(arr.length<SIZE) arr.push(0);
+  return arr;
 }
 
 function move(dir){
-  mergedPos=[];
   let moved=false;
   for(let i=0;i<SIZE;i++){
-    let row=
-      dir==="L"?board[i]:
-      dir==="R"?[...board[i]].reverse():
-      dir==="U"?board.map(v=>v[i]):
-                board.map(v=>v[i]).reverse();
-
-    let s=slide(row,i,dir);
-    let f=(dir==="R"||dir==="D")?[...s].reverse():s;
-
-    for(let j=0;j<SIZE;j++){
-      let v=(dir==="L"||dir==="R")?board[i][j]:board[j][i];
-      if(v!==f[j]) moved=true;
-      if(dir==="L"||dir==="R") board[i][j]=f[j];
-      else board[j][i]=f[j];
+    let row;
+    if(dir==="L") row=slide(board[i]);
+    if(dir==="R") row=slide([...board[i]].reverse()).reverse();
+    if(dir==="U"){
+      let col=slide(board.map(r=>r[i]));
+      for(let j=0;j<SIZE;j++) if(board[j][i]!==col[j]) moved=true,board[j][i]=col[j];
+      continue;
     }
+    if(dir==="D"){
+      let col=slide(board.map(r=>r[i]).reverse()).reverse();
+      for(let j=0;j<SIZE;j++) if(board[j][i]!==col[j]) moved=true,board[j][i]=col[j];
+      continue;
+    }
+    if(board[i].join()!=row.join()) moved=true;
+    board[i]=row;
   }
-
   if(moved){
-    spawn();update();draw();saveGame();
+    spawn();
+    update();
+    draw();
     if(!canMove()) endGame();
   }
 }
@@ -210,16 +200,12 @@ function canMove(){
 function draw(){
   const b=document.getElementById("board");
   b.innerHTML="";
-  for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++){
-    const v=board[i][j];
-    const d=document.createElement("div");
+  for(let r of board)for(let v of r){
+    let d=document.createElement("div");
     d.className="cell"+(v?" n"+v:"");
-    if(v)d.textContent=v;
-    if(spawned&&spawned[0]===i&&spawned[1]===j)d.classList.add("spawn");
-    if(mergedPos.some(p=>p[0]===i&&p[1]===j))d.classList.add("merge");
+    d.textContent=v||"";
     b.appendChild(d);
   }
-  spawned=null;
 }
 
 function update(){
@@ -229,47 +215,40 @@ function update(){
     localStorage.setItem("best",best);
     document.getElementById("best").textContent=best;
   }
+  updateLocks();
 }
 
+function updateLocks(){
+  lock("r2048",best<25000);
+  lock("r4096",best<50000);
+  lock("r8192",best<100000);
+}
+
+function lock(id,state){
+  document.getElementById(id).classList.toggle("locked",state);
+}
+
+function specialReset(v,s,m){
+  if((m==1&&best<25000)||(m==2&&best<50000)||(m==3&&best<100000)){
+    alert("ミッション"+m+"をクリアすると解放");
+    return;
+  }
+  score=s;
+  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  board[0][0]=v;
+  update();draw();
+}
+
+function fullReset(){init();}
+
 function endGame(){
-  localStorage.removeItem("board");
-  localStorage.removeItem("score");
   document.getElementById("finalScore").textContent="Score: "+score;
   document.getElementById("newRecord").textContent=score===best?"New Record!":"";
   document.getElementById("gameover").style.display="flex";
 }
 
-function saveGame(){
-  localStorage.setItem("board",JSON.stringify(board));
-  localStorage.setItem("score",score);
-}
-
-function loadGame(){
-  let b=localStorage.getItem("board");
-  let s=localStorage.getItem("score");
-  if(b&&s){
-    board=JSON.parse(b);
-    score=Number(s);
-    return true;
-  }
-  return false;
-}
-
-function fullReset(){
-  localStorage.removeItem("board");
-  localStorage.removeItem("score");
-  init();
-}
-
-function specialReset(val,sc){
-  score=sc;
-  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  board[0][0]=val;
-  update();draw();saveGame();
-}
-
 function info(){
-  alert("最高スコアが一定値に到達すると、2048 / 4096 / 8192 がある状態からゲームを開始できます");
+  alert("最高スコアが一定値に到達すると、特定タイルからゲームを開始できます");
 }
 
 init();
