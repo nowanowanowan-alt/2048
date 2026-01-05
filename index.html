@@ -51,12 +51,13 @@ h1{margin:10px 0}
   transition:transform .12s ease;
 }
 
+/* animations */
 @keyframes spawn{0%{transform:scale(.6)}100%{transform:scale(1)}}
 @keyframes merge{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
-
 .spawn{animation:spawn .15s ease}
 .merge{animation:merge .18s ease}
 
+/* colors */
 .n2{background:#eee4da}
 .n4{background:#f0d9c2}
 .n8{background:#f2b179}
@@ -80,8 +81,8 @@ button{
   color:#555;
 }
 
+/* Game Over overlay */
 #gameover{
-  display:none;
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.6);
@@ -91,6 +92,14 @@ button{
   justify-content:center;
   align-items:center;
   font-size:22px;
+
+  opacity:0;
+  pointer-events:none;
+  transition:.2s;
+}
+#gameover.show{
+  opacity:1;
+  pointer-events:auto;
 }
 </style>
 </head>
@@ -123,7 +132,7 @@ button{
   <div>GAME OVER</div>
   <div id="finalScore"></div>
   <div id="newRecord"></div>
-  <button onclick="fullReset()">Restart</button>
+  <button onclick="restart()">Restart</button>
 </div>
 
 <script>
@@ -132,13 +141,39 @@ let board=[],score=0;
 let best=Number(localStorage.getItem("best"))||0;
 document.getElementById("best").textContent=best;
 
+/* ---------- save / load ---------- */
+function saveGame(){
+  localStorage.setItem("board",JSON.stringify(board));
+  localStorage.setItem("score",score);
+}
+function loadGame(){
+  let b=localStorage.getItem("board");
+  let s=localStorage.getItem("score");
+  if(b && s){
+    board=JSON.parse(b);
+    score=Number(s);
+    return true;
+  }
+  return false;
+}
+function clearSave(){
+  localStorage.removeItem("board");
+  localStorage.removeItem("score");
+}
+
+/* ---------- init ---------- */
 function init(){
-  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
-  score=0;
-  spawn();spawn();
+  document.getElementById("gameover").classList.remove("show");
+
+  if(!loadGame()){
+    board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+    score=0;
+    spawn();spawn();
+  }
   update();draw();
 }
 
+/* ---------- game logic ---------- */
 function spawn(){
   let e=[];
   for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE;j++)
@@ -163,27 +198,39 @@ function slide(arr){
 
 function move(dir){
   let moved=false;
+
   for(let i=0;i<SIZE;i++){
-    let row;
-    if(dir==="L") row=slide(board[i]);
-    if(dir==="R") row=slide([...board[i]].reverse()).reverse();
+    if(dir==="L"){
+      let r=slide(board[i]);
+      if(board[i].join()!=r.join()) moved=true;
+      board[i]=r;
+    }
+    if(dir==="R"){
+      let r=slide([...board[i]].reverse()).reverse();
+      if(board[i].join()!=r.join()) moved=true;
+      board[i]=r;
+    }
     if(dir==="U"){
-      let col=slide(board.map(r=>r[i]));
-      for(let j=0;j<SIZE;j++) if(board[j][i]!==col[j]) moved=true,board[j][i]=col[j];
-      continue;
+      let col=slide(board.map(v=>v[i]));
+      for(let j=0;j<SIZE;j++){
+        if(board[j][i]!==col[j]) moved=true;
+        board[j][i]=col[j];
+      }
     }
     if(dir==="D"){
-      let col=slide(board.map(r=>r[i]).reverse()).reverse();
-      for(let j=0;j<SIZE;j++) if(board[j][i]!==col[j]) moved=true,board[j][i]=col[j];
-      continue;
+      let col=slide(board.map(v=>v[i]).reverse()).reverse();
+      for(let j=0;j<SIZE;j++){
+        if(board[j][i]!==col[j]) moved=true;
+        board[j][i]=col[j];
+      }
     }
-    if(board[i].join()!=row.join()) moved=true;
-    board[i]=row;
   }
+
   if(moved){
     spawn();
     update();
     draw();
+    saveGame();
     if(!canMove()) endGame();
   }
 }
@@ -197,6 +244,7 @@ function canMove(){
   return false;
 }
 
+/* ---------- UI ---------- */
 function draw(){
   const b=document.getElementById("board");
   b.innerHTML="";
@@ -223,11 +271,11 @@ function updateLocks(){
   lock("r4096",best<50000);
   lock("r8192",best<100000);
 }
-
 function lock(id,state){
   document.getElementById(id).classList.toggle("locked",state);
 }
 
+/* ---------- resets ---------- */
 function specialReset(v,s,m){
   if((m==1&&best<25000)||(m==2&&best<50000)||(m==3&&best<100000)){
     alert("ミッション"+m+"をクリアすると解放");
@@ -236,15 +284,30 @@ function specialReset(v,s,m){
   score=s;
   board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
   board[0][0]=v;
+  saveGame();
   update();draw();
 }
 
-function fullReset(){init();}
+function fullReset(){
+  clearSave();
+  board=[...Array(SIZE)].map(()=>Array(SIZE).fill(0));
+  score=0;
+  spawn();spawn();
+  update();draw();
+}
 
+function restart(){
+  clearSave();
+  document.getElementById("gameover").classList.remove("show");
+  fullReset();
+}
+
+/* ---------- game over ---------- */
 function endGame(){
+  clearSave();
   document.getElementById("finalScore").textContent="Score: "+score;
   document.getElementById("newRecord").textContent=score===best?"New Record!":"";
-  document.getElementById("gameover").style.display="flex";
+  document.getElementById("gameover").classList.add("show");
 }
 
 function info(){
