@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2048 Base</title>
+<title>My2048</title>
 
 <style>
 *{
@@ -56,14 +56,48 @@ h1{margin:16px 0 8px;}
   justify-content:center;
   font-weight:bold;
   font-size:24px;
-  transition:transform .25s ease;
+  transition:transform .3s ease;
 }
 
-.controls button{
+.controls button,
+.resetRow button{
   font-size:16px;
   padding:6px 12px;
   margin:4px;
 }
+
+button.locked{
+  background:#ccc;
+  color:#666;
+}
+
+.infoBtn{
+  font-size:14px;
+  margin-left:6px;
+  padding:2px 6px;
+}
+
+#missionPanel{
+  max-width:320px;
+  margin:10px auto;
+  background:#f3efe8;
+  border-radius:10px;
+  padding:10px;
+  text-align:left;
+}
+#missionPanel ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+#missionPanel li{
+  display:flex;
+  gap:8px;
+  font-size:14px;
+}
+#missionPanel li.done{color:#999;}
+
+.hidden{display:none;}
 
 #gameover{
   position:fixed;
@@ -92,6 +126,17 @@ h1{margin:16px 0 8px;}
   <div>Best: <span id="best">0</span></div>
 </div>
 
+<div>
+  <select id="lockSelect" disabled>
+    <option value="">方向ロックなし</option>
+    <option value="up">↑ 上</option>
+    <option value="down">↓ 下</option>
+    <option value="left">← 左</option>
+    <option value="right">→ 右</option>
+  </select>
+  <button class="infoBtn" onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入ります')">i</button>
+</div>
+
 <div id="board"></div>
 
 <div class="controls">
@@ -103,172 +148,263 @@ h1{margin:16px 0 8px;}
   </div>
 </div>
 
-<button onclick="restart()">Restart</button>
+<button onclick="restart()">RESET</button>
+
+<div class="resetRow">
+  <button id="r2048" onclick="specialReset(2048)">2048</button>
+  <button id="r4096" onclick="specialReset(4096)">4096</button>
+  <button id="r8192" onclick="specialReset(8192)">8192</button>
+  <button class="infoBtn" onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
+</div>
+
+<button onclick="toggleMission()">ミッション</button>
+<div id="missionPanel" class="hidden">
+  <ul id="missionList"></ul>
+</div>
 
 <div id="gameover">
   <div id="gameoverContent">
     <h2>Game Over</h2>
     <p>Score: <span id="finalScore"></span></p>
+    <p id="newRecord" class="hidden">New Record!</p>
     <button onclick="restart()">Restart</button>
   </div>
 </div>
 
 <script>
-const SIZE = 4;
-let board = [];
-let score = 0;
-let best = Number(localStorage.getItem("best") || 0);
-let gameOver = false;
+const SIZE=4;
+let board=[], score=0, best=0, gameOver=false;
+let lockedDirection="";
 
-const colors = {
+const colors={
   2:"#eee4da",4:"#ede0c8",8:"#f2b179",16:"#f59563",
-  32:"#f67c5f",64:"#f65e3b",128:"#edcf72",256:"#edcc61",
-  512:"#edc850",1024:"#edc53f",2048:"#edc22e",
-  4096:"#3c3a32",8192:"#3c3a32",16384:"#3c3a32",32768:"#3c3a32"
+  32:"#f67c5f",64:"#f65e3b",
+  128:"#edcf72",256:"#edcc61",512:"#edc850",
+  1024:"#edc53f",2048:"#edc22e",
+  4096:"#3c3a32",8192:"#3c3a32",
+  16384:"#3c3a32",32768:"#3c3a32"
 };
 
-const boardEl = document.getElementById("board");
+const missions = JSON.parse(localStorage.getItem("missions")||"{}");
+
+const missionData=[
+"★☆☆☆☆ Mission 1 : 25000点到達",
+"★☆☆☆☆ Mission 2 : 50000点到達",
+"★★☆☆☆ Mission 3 : 100000点到達",
+"★★★☆☆ Mission 4 : 150000点到達",
+"★★★★☆ Mission 5 : 225000点到達",
+"★★★★☆ Mission 6 : 300000点到達",
+"★★★★★ Mission 7 : 450000点到達",
+"★☆☆☆☆ Mission 8 : 500点以下でゲームオーバー",
+"★★☆☆☆ Mission 9 : 300点以下でゲームオーバー",
+"★★★☆☆ Mission 10 : 150点以下でゲームオーバー",
+"★★★★☆ Mission 11 : 2048を同時に3つ作る"
+];
+
+const boardEl=document.getElementById("board");
+const bestEl=document.getElementById("best");
+const lockSelect=document.getElementById("lockSelect");
 
 function init(){
   boardEl.innerHTML="";
-  for(let i=0;i<SIZE*SIZE;i++){
+  for(let i=0;i<16;i++){
     const c=document.createElement("div");
     c.className="cell";
     boardEl.appendChild(c);
   }
-
-  const save = localStorage.getItem("save");
-  if(save){
-    const d = JSON.parse(save);
-    board = d.board;
-    score = d.score;
-  }else{
-    board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
-    spawn(); spawn();
+  const save=JSON.parse(localStorage.getItem("save")||"null");
+  if(save){board=save.board;score=save.score;}
+  else{
+    board=[...Array(4)].map(()=>Array(4).fill(0));
+    spawn();spawn();
   }
+  best=Number(localStorage.getItem("best")||0);
   update();
 }
 
 function spawn(){
-  const empty=[];
-  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)
-    if(board[r][c]===0) empty.push([r,c]);
-  if(!empty.length) return;
-  const [r,c]=empty[Math.random()*empty.length|0];
+  const e=[];
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++)
+    if(board[r][c]==0)e.push([r,c]);
+  if(!e.length)return;
+  const [r,c]=e[Math.random()*e.length|0];
   board[r][c]=Math.random()<0.9?2:4;
 }
 
 function draw(){
   [...boardEl.children].forEach(c=>c.innerHTML="");
-  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
     const v=board[r][c];
     if(v){
       const t=document.createElement("div");
       t.className="tile";
       t.textContent=v;
-      t.style.background=colors[v]||"#000";
+      t.style.background=colors[v];
       t.style.color=v>=4096?"#fff":"#000";
-      boardEl.children[r*SIZE+c].appendChild(t);
+      boardEl.children[r*4+c].appendChild(t);
     }
   }
 }
 
 function update(){
   document.getElementById("score").textContent=score;
-  document.getElementById("best").textContent=best;
+  bestEl.textContent=best;
   draw();
   localStorage.setItem("save",JSON.stringify({board,score}));
   localStorage.setItem("best",best);
+  localStorage.setItem("missions",JSON.stringify(missions));
+  updateBestColor();
+  renderMission();
 }
 
-function slide(arr){
-  arr=arr.filter(v=>v);
-  for(let i=0;i<arr.length-1;i++){
-    if(arr[i]===arr[i+1]){
-      arr[i]*=2;
-      score+=arr[i];
-      arr[i+1]=0;
+function updateBestColor(){
+  bestEl.style.color=
+    missions.m7?"pink":
+    missions.m6?"purple":
+    missions.m5?"red":"#000";
+}
+
+function slide(a){
+  a=a.filter(v=>v);
+  for(let i=0;i<a.length-1;i++){
+    if(a[i]==a[i+1]){
+      a[i]*=2; score+=a[i]; a[i+1]=0;
     }
   }
-  arr=arr.filter(v=>v);
-  while(arr.length<SIZE) arr.push(0);
-  return arr;
+  a=a.filter(v=>v);
+  while(a.length<4)a.push(0);
+  return a;
 }
 
 function move(dir){
-  if(gameOver) return;
-  let moved=false;
+  if(gameOver)return;
+  if(lockedDirection===dir &&
+    !confirm("この方向はロックされています。動かしますか？")) return;
 
-  for(let i=0;i<SIZE;i++){
+  let moved=false;
+  for(let i=0;i<4;i++){
     let line=[];
-    for(let j=0;j<SIZE;j++){
+    for(let j=0;j<4;j++){
       let r=i,c=j;
-      if(dir==="up"){r=j;c=i;}
-      if(dir==="down"){r=SIZE-1-j;c=i;}
-      if(dir==="right"){r=i;c=SIZE-1-j;}
+      if(dir=="up"){r=j;c=i;}
+      if(dir=="down"){r=3-j;c=i;}
+      if(dir=="right"){r=i;c=3-j;}
       line.push(board[r][c]);
     }
     const sl=slide(line);
-    for(let j=0;j<SIZE;j++){
+    for(let j=0;j<4;j++){
       let r=i,c=j;
-      if(dir==="up"){r=j;c=i;}
-      if(dir==="down"){r=SIZE-1-j;c=i;}
-      if(dir==="right"){r=i;c=SIZE-1-j;}
-      if(board[r][c]!==sl[j]) moved=true;
+      if(dir=="up"){r=j;c=i;}
+      if(dir=="down"){r=3-j;c=i;}
+      if(dir=="right"){r=i;c=3-j;}
+      if(board[r][c]!=sl[j]) moved=true;
       board[r][c]=sl[j];
     }
   }
-
   if(moved){
     spawn();
     if(score>best) best=score;
+    checkMissions();
     update();
     if(!canMove()) endGame();
   }
 }
 
 function canMove(){
-  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
-    if(board[r][c]===0) return true;
-    if(r<3 && board[r][c]===board[r+1][c]) return true;
-    if(c<3 && board[r][c]===board[r][c+1]) return true;
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+    if(board[r][c]==0)return true;
+    if(r<3&&board[r][c]==board[r+1][c])return true;
+    if(c<3&&board[r][c]==board[r][c+1])return true;
   }
   return false;
 }
 
+function count(v){
+  return board.flat().filter(x=>x==v).length;
+}
+
+function checkMissions(){
+  if(best>=25000)missions.m1=true;
+  if(best>=50000)missions.m2=true;
+  if(best>=100000)missions.m3=true;
+  if(best>=150000)missions.m4=true;
+  if(best>=225000)missions.m5=true;
+  if(best>=300000)missions.m6=true;
+  if(best>=450000)missions.m7=true;
+  if(count(2048)>=3)missions.m11=true;
+  lockSelect.disabled=!missions.m4;
+}
+
+function specialReset(v){
+  if(v==2048&&!missions.m1)return alert("Mission1クリアで解放");
+  if(v==4096&&!missions.m2)return alert("Mission2クリアで解放");
+  if(v==8192&&!missions.m3)return alert("Mission3クリアで解放");
+  board=[...Array(4)].map(()=>Array(4).fill(0));
+  const pos=Math.random()*16|0;
+  board[pos>>2][pos%4]=v;
+  score=v==2048?20100:v==4096?44400:96900;
+  update();
+}
+
 function endGame(){
   gameOver=true;
-  localStorage.removeItem("save");
+  if(score<=500)missions.m8=true;
+  if(score<=300)missions.m9=true;
+  if(score<=150)missions.m10=true;
   document.getElementById("finalScore").textContent=score;
+  document.getElementById("newRecord").classList.toggle("hidden",score<best);
   document.getElementById("gameover").classList.add("show");
+  localStorage.removeItem("save");
 }
 
 function restart(){
   gameOver=false;
   document.getElementById("gameover").classList.remove("show");
   score=0;
-  board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
-  spawn(); spawn();
+  board=[...Array(4)].map(()=>Array(4).fill(0));
+  spawn();spawn();
   update();
 }
 
-/* スワイプ */
-let sx=0, sy=0;
+function toggleMission(){
+  document.getElementById("missionPanel").classList.toggle("hidden");
+}
+
+function renderMission(){
+  const ul=document.getElementById("missionList");
+  ul.innerHTML="";
+  missionData.forEach((t,i)=>{
+    const li=document.createElement("li");
+    if(missions["m"+(i+1)])li.classList.add("done");
+    li.innerHTML=`<span style="flex:1">${t}</span><span>${missions["m"+(i+1)]?"済":"未"}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+lockSelect.onchange=()=>{
+  if(!missions.m4){
+    alert("Mission4クリアで解放");
+    lockSelect.value="";
+    return;
+  }
+  lockedDirection=lockSelect.value;
+};
+
+/* swipe */
+let sx=0,sy=0;
 boardEl.addEventListener("touchstart",e=>{
   const t=e.touches[0];
-  sx=t.clientX; sy=t.clientY;
+  sx=t.clientX;sy=t.clientY;
 },{passive:false});
-
 boardEl.addEventListener("touchend",e=>{
   const t=e.changedTouches[0];
-  const dx=t.clientX-sx;
-  const dy=t.clientY-sy;
+  const dx=t.clientX-sx,dy=t.clientY-sy;
   if(Math.abs(dx)>Math.abs(dy)){
-    if(dx>30) move("right");
-    else if(dx<-30) move("left");
+    if(dx>30)move("right");
+    else if(dx<-30)move("left");
   }else{
-    if(dy>30) move("down");
-    else if(dy<-30) move("up");
+    if(dy>30)move("down");
+    else if(dy<-30)move("up");
   }
 });
 
