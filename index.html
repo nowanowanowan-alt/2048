@@ -67,7 +67,23 @@ h1{margin:16px 0 6px;}
 .tile.spawn{
   box-shadow:0 0 0 8px rgba(255,255,255,.9);
 }
+.tile[data-v="2"]    { background:#ffffff; color:#776e65; }
+.tile[data-v="4"]    { background:#f5d7c4; color:#776e65; }
+.tile[data-v="8"]    { background:#f2b179; color:#fff; }
+.tile[data-v="16"]   { background:#f59563; color:#fff; }
+.tile[data-v="32"]   { background:#f67c5f; color:#fff; }
+.tile[data-v="64"]   { background:#f65e3b; color:#fff; }
 
+.tile[data-v="128"]  { background:#edd073; color:#fff; }
+.tile[data-v="256"]  { background:#edcc62; color:#fff; }
+.tile[data-v="512"]  { background:#edc950; color:#fff; }
+.tile[data-v="1024"] { background:#edc53f; color:#fff; }
+.tile[data-v="2048"] { background:#edc22e; color:#fff; }
+
+.tile[data-v="4096"] { background:#000; color:#fff; }
+.tile[data-v="8192"] { background:#8e44ad; color:#fff; }
+.tile[data-v="16384"]{ background:#ff69b4; color:#fff; }
+.tile[data-v="32768"]{ background:#ffffff; color:#000; border:2px solid #000; }
 .controls button,
 .resetRow button{
   font-size:16px;
@@ -237,6 +253,7 @@ function draw(){
       boardEl.children[r*4+c].appendChild(t);
     }
   }
+  t.dataset.v = v;
 }
 
 function update(){
