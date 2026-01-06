@@ -10,12 +10,15 @@
   box-sizing:border-box;
   user-select:none;
   -webkit-user-select:none;
+  -webkit-touch-callout:none;
 }
-body{
+html,body{
   margin:0;
   background:#faf6f0;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
   text-align:center;
+  overscroll-behavior:none;
+  touch-action:manipulation;
 }
 
 h1{margin:16px 0 6px;}
@@ -39,6 +42,7 @@ h1{margin:16px 0 6px;}
   grid-template-rows:repeat(4,1fr);
   gap:10px;
   padding:10px;
+  touch-action:none;
 }
 
 .cell{
@@ -56,33 +60,21 @@ h1{margin:16px 0 6px;}
   justify-content:center;
   font-weight:bold;
   font-size:24px;
-  transition:transform .25s ease; /* ← ここがゆっくり */
+  transition:transform .25s ease; /* ←少しゆっくり */
 }
 
-.controls button,
-.resetRow button{
-  font-size:16px;
-  padding:6px 12px;
-  margin:4px;
-}
-
-button.locked{
-  background:#ccc;
-  color:#666;
-}
-
-#lockSelect:disabled{
-  background:#ccc;
-  color:#666;
-}
-
-.infoBtn{
-  font-size:14px;
-  padding:2px 6px;
-  margin-left:6px;
-}
-
-.hidden{display:none;}
+/* ==== 色（元の2048系） ==== */
+.tile[data-v="2"]{background:#eee4da;}
+.tile[data-v="4"]{background:#ede0c8;}
+.tile[data-v="8"]{background:#f2b179;color:#fff;}
+.tile[data-v="16"]{background:#f59563;color:#fff;}
+.tile[data-v="32"]{background:#f67c5f;color:#fff;}
+.tile[data-v="64"]{background:#f65e3b;color:#fff;}
+.tile[data-v="128"]{background:#edcf72;}
+.tile[data-v="256"]{background:#edcc61;}
+.tile[data-v="512"]{background:#edc850;}
+.tile[data-v="1024"]{background:#edc53f;}
+.tile[data-v="2048"]{background:#edc22e;}
 
 #gameover{
   position:fixed;
@@ -91,6 +83,7 @@ button.locked{
   display:none;
   justify-content:center;
   align-items:center;
+  z-index:10;
 }
 #gameover.show{display:flex;}
 
@@ -105,67 +98,37 @@ button.locked{
 <body>
 
 <h1>2048</h1>
-
 <div id="scorebar">
   <div>Score: <span id="score">0</span></div>
   <div>Best: <span id="best">0</span></div>
 </div>
 
-<div>
-  <select id="lockSelect" disabled>
-    <option value="">方向ロックなし</option>
-    <option value="up">↑ 上</option>
-    <option value="down">↓ 下</option>
-    <option value="left">← 左</option>
-    <option value="right">→ 右</option>
-  </select>
-  <button class="infoBtn"
-   onclick="alert('任意の1方向を選ぶと、その方向に動かす前に確認が入ります')">i</button>
-</div>
-
 <div id="board"></div>
-
-<div class="controls">
-  <div><button onclick="move('up')">↑</button></div>
-  <div>
-    <button onclick="move('left')">←</button>
-    <button onclick="move('down')">↓</button>
-    <button onclick="move('right')">→</button>
-  </div>
-</div>
-
-<button onclick="restart()">RESET</button>
-
-<div class="resetRow">
-  <button id="r2048" onclick="specialReset(2048)">2048</button>
-  <button id="r4096" onclick="specialReset(4096)">4096</button>
-  <button id="r8192" onclick="specialReset(8192)">8192</button>
-  <button class="infoBtn"
-   onclick="alert('特定のタイルがある状態からリセットできます')">i</button>
-</div>
 
 <div id="gameover">
   <div id="gameoverContent">
     <h2>Game Over</h2>
     <p>Score: <span id="finalScore"></span></p>
+    <p id="newRecord" style="display:none;">New Record!</p>
     <button onclick="restart()">Restart</button>
   </div>
 </div>
 
 <script>
 const SIZE=4;
-let board, score=0, best=0, gameOver=false;
-let lockedDirection="";
+let board=[], score=0, best=0, gameOver=false;
+let startX=0,startY=0,touching=false;
 
 const missions={
   m1:false,m2:false,m3:false,m4:false,m5:false,
-  m6:false,m7:false,m8:false,m9:false,m10:false,m11:false
+  m6:false,m7:false,m8:false,m9:false,m10:false
 };
 
 const boardEl=document.getElementById("board");
+const scoreEl=document.getElementById("score");
 const bestEl=document.getElementById("best");
-const lockSelect=document.getElementById("lockSelect");
 
+/* ===== 初期化 ===== */
 function init(){
   boardEl.innerHTML="";
   for(let i=0;i<16;i++){
@@ -174,22 +137,35 @@ function init(){
     boardEl.appendChild(c);
   }
 
-  board=[...Array(4)].map(()=>Array(4).fill(0));
-  spawn(); spawn();
-  score=0;
+  const save=localStorage.getItem("save");
+  const ms=localStorage.getItem("missions");
   best=Number(localStorage.getItem("best")||0);
-  draw();
+
+  if(ms) Object.assign(missions,JSON.parse(ms));
+
+  if(save){
+    const d=JSON.parse(save);
+    board=d.board;
+    score=d.score;
+  }else{
+    board=[...Array(4)].map(()=>Array(4).fill(0));
+    spawn(); spawn();
+  }
+
+  update();
 }
 
+/* ===== タイル生成 ===== */
 function spawn(){
-  const e=[];
+  const empty=[];
   for(let r=0;r<4;r++)for(let c=0;c<4;c++)
-    if(board[r][c]===0) e.push([r,c]);
-  if(!e.length) return;
-  const [r,c]=e[Math.random()*e.length|0];
+    if(board[r][c]==0) empty.push([r,c]);
+  if(!empty.length) return;
+  const [r,c]=empty[Math.random()*empty.length|0];
   board[r][c]=Math.random()<0.9?2:4;
 }
 
+/* ===== 描画 ===== */
 function draw(){
   [...boardEl.children].forEach(c=>c.innerHTML="");
   for(let r=0;r<4;r++)for(let c=0;c<4;c++){
@@ -197,19 +173,27 @@ function draw(){
     if(v){
       const t=document.createElement("div");
       t.className="tile";
+      t.dataset.v=v;
       t.textContent=v;
       boardEl.children[r*4+c].appendChild(t);
     }
   }
-  document.getElementById("score").textContent=score;
-  bestEl.textContent=best;
-  updateBestColor();
 }
 
+/* ===== 更新 ===== */
+function update(){
+  scoreEl.textContent=score;
+  bestEl.textContent=best;
+  draw();
+  localStorage.setItem("save",JSON.stringify({board,score}));
+  localStorage.setItem("missions",JSON.stringify(missions));
+}
+
+/* ===== 移動 ===== */
 function slide(arr){
   arr=arr.filter(v=>v);
   for(let i=0;i<arr.length-1;i++){
-    if(arr[i]===arr[i+1]){
+    if(arr[i]==arr[i+1]){
       arr[i]*=2;
       score+=arr[i];
       arr[i+1]=0;
@@ -222,70 +206,92 @@ function slide(arr){
 
 function move(dir){
   if(gameOver) return;
-  if(lockedDirection===dir && !confirm("この方向はロックされています")) return;
-
   let moved=false;
+
   for(let i=0;i<4;i++){
     let line=[];
     for(let j=0;j<4;j++){
       let r=i,c=j;
-      if(dir==="up"){r=j;c=i;}
-      if(dir==="down"){r=3-j;c=i;}
-      if(dir==="right"){r=i;c=3-j;}
+      if(dir=="up"){r=j;c=i;}
+      if(dir=="down"){r=3-j;c=i;}
+      if(dir=="right"){r=i;c=3-j;}
       line.push(board[r][c]);
     }
     const sl=slide(line);
     for(let j=0;j<4;j++){
       let r=i,c=j;
-      if(dir==="up"){r=j;c=i;}
-      if(dir==="down"){r=3-j;c=i;}
-      if(dir==="right"){r=i;c=3-j;}
-      if(board[r][c]!==sl[j]) moved=true;
+      if(dir=="up"){r=j;c=i;}
+      if(dir=="down"){r=3-j;c=i;}
+      if(dir=="right"){r=i;c=3-j;}
+      if(board[r][c]!=sl[j]) moved=true;
       board[r][c]=sl[j];
     }
   }
+
   if(moved){
     spawn();
-    if(score>best){best=score;localStorage.setItem("best",best);}
-    draw();
+    if(score>best){
+      best=score;
+      localStorage.setItem("best",best);
+    }
+    update();
     if(!canMove()) endGame();
   }
 }
 
 function canMove(){
   for(let r=0;r<4;r++)for(let c=0;c<4;c++){
-    if(board[r][c]===0) return true;
-    if(r<3 && board[r][c]===board[r+1][c]) return true;
-    if(c<3 && board[r][c]===board[r][c+1]) return true;
+    if(board[r][c]==0) return true;
+    if(r<3 && board[r][c]==board[r+1][c]) return true;
+    if(c<3 && board[r][c]==board[r][c+1]) return true;
   }
   return false;
 }
 
+/* ===== GameOver ===== */
 function endGame(){
   gameOver=true;
+  localStorage.removeItem("save");
   document.getElementById("finalScore").textContent=score;
+  document.getElementById("newRecord").style.display =
+    score>=best ? "block":"none";
+
+  /* Mission 8〜10 はここだけで判定 */
+  if(score<=500) missions.m8=true;
+  if(score<=300) missions.m9=true;
+  if(score<=150) missions.m10=true;
+
+  localStorage.setItem("missions",JSON.stringify(missions));
   document.getElementById("gameover").classList.add("show");
 }
 
 function restart(){
   gameOver=false;
   document.getElementById("gameover").classList.remove("show");
-  init();
-}
-
-function specialReset(v){
   board=[...Array(4)].map(()=>Array(4).fill(0));
-  board[0][0]=v;
-  score = v===2048?20100 : v===4096?44400 : 96900;
-  draw();
+  score=0;
+  spawn(); spawn();
+  update();
 }
 
-function updateBestColor(){
-  bestEl.style.color="#000";
-  if(missions.m5) bestEl.style.color="red";
-  if(missions.m6) bestEl.style.color="purple";
-  if(missions.m7) bestEl.style.color="pink";
-}
+/* ===== スワイプ ===== */
+boardEl.addEventListener("touchstart",e=>{
+  const t=e.touches[0];
+  startX=t.clientX; startY=t.clientY;
+},{passive:false});
+
+boardEl.addEventListener("touchend",e=>{
+  const t=e.changedTouches[0];
+  const dx=t.clientX-startX;
+  const dy=t.clientY-startY;
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>30) move("right");
+    else if(dx<-30) move("left");
+  }else{
+    if(dy>30) move("down");
+    else if(dy<-30) move("up");
+  }
+},{passive:false});
 
 init();
 </script>
