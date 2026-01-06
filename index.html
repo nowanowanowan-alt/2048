@@ -250,10 +250,10 @@ function draw(){
       const t=document.createElement("div");
       t.className="tile";
       t.textContent=v;
+      t.dataset.v = v;
       boardEl.children[r*4+c].appendChild(t);
     }
   }
-  t.dataset.v = v;
 }
 
 function update(){
